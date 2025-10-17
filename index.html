@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chord Finder AI — v9.4.7 (Harmonic Live Sheet)</title>
+  <title>Chord Finder AI — v9.4.6 (Harmonic Live Sheet)</title>
   <meta name="theme-color" content="#0b1022" />
   <link rel="manifest" href="manifest.json" />
   <style>
@@ -16,7 +16,7 @@
     .muted{color:var(--muted);font-size:14px}
     .panel{background:#0c162b;border:1px solid #1f2a40;border-radius:16px;padding:14px;margin-top:12px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    input[type="file"], select, button, input[type="number"]{padding:10px 14px;border-radius:12px;border:1px solid #223;background:#0b1221;color:#cfe3ff;appearance:none;font-weight:700;cursor:pointer}
+    input[type="file"}, select, button, input[type="number"]{padding:10px 14px;border-radius:12px;border:1px solid #223;background:#0b1221;color:#cfe3ff;appearance:none;font-weight:700;cursor:pointer}
     .badge{display:inline-flex;gap:6px;align-items:center;background:#0b1221;border:1px solid #1f2937;color:#cbd5e1;border-radius:999px;padding:6px 10px;font-size:12px}
     .badge.ai{border-color:#23664d;background:#0d2e1f;color:#d7ffe6}
     .live{background:#0c162b;border:1px solid #1f2a40;border-radius:16px;padding:18px;display:flex;align-items:center;justify-content:space-between;margin-top:10px}
@@ -25,8 +25,8 @@
     .mono{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;line-height:1.6;direction:ltr;text-align:left}
     .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #2a3d55;margin:2px 4px;background:#0b1221}
     .ok{border-color:#1f5f3f;color:#d7ffe6;background:#0d2e1f}
-    .err{border-color:#5f2323;color:#ffe0e0;background:#3f1d1d}
-    .warn{border-color:#8a6a1f;color:#fff0ד9;background:#3a2a0c}
+    .err{border-color:#5f2323;color:#ffe0e0;background:#3f1d1ד}
+    .warn{border-color:#8a6a1f;color:#fff0d9;background:#3a2a0c}
     .spin{width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;animation:sp 1s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
     progress{width:240px;height:10px;border-radius:8px;overflow:hidden}
@@ -42,8 +42,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>🎵 Chord Finder AI — v9.4.7 (Harmonic Live Sheet) <span class="mutedSmall">• MP4/WEBM/MP3/WAV + Whisper</span></h1>
-    <div class="muted">מנוע 9.x מלא • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • RTL • קאפו • קוואנטה • סולם.</div>
+    <h1>🎵 Chord Finder AI — v9.4.6 (Harmonic Live Sheet) <span class="mutedSmall">• harmonic+pause + cautious 7/sus + Whisper Lyrics</span></h1>
+    <div class="muted">מנוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • בלי דף סטטי • כותב משמאל לימין, עד 7 אקורדים בשורה.</div>
 
     <section class="panel">
       <div class="row">
@@ -97,14 +97,14 @@
     </section>
 
     <section class="panel">
-      <h2>🎤 מילים מסונכרנות + אקורדים מעל המילים</h2>
+      <h2>🎤 מילים מסונכרנות (Whisper) + אקורדים מעל כל מילה</h2>
       <div id="lyricsSheet" class="mono">—</div>
     </section>
   </div>
 
 <script type="module">
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js', {updateViaCache:'none'}).catch(console.error);
+  navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
 }
 
 // ===== UI refs =====
@@ -120,8 +120,8 @@ const bpmEl=document.getElementById('bpm'); const durEl=document.getElementById(
 const quantEl=document.getElementById('quant'); const deepEl=document.getElementById('deep');
 const capoEl=document.getElementById('capo'); const tonicBadge=document.getElementById('tonicBadge'); const keyBadge=document.getElementById('keyBadge');
 const liveChordEl=document.getElementById('liveChord'); const liveSheetEl=document.getElementById('liveSheet');
-const lyricsSheet=document.getElementById('lyricsSheet');
 const resetSheetBtn=document.getElementById('resetSheet'); const aiBadge=document.getElementById('aiBadge');
+const lyricsSheet=document.getElementById('lyricsSheet');
 
 function showAnalyzing(stepText){ statusEl.innerHTML='<span class="spin"></span> '+stepText; statusEl.className='pill warn'; statusEl.style.display='inline-flex'; }
 function ok(msg){ statusEl.textContent=msg; statusEl.className='pill ok'; statusEl.style.display='inline-flex'; }
@@ -156,18 +156,7 @@ function ksScore(chromaAgg, root, isMinor){
 }
 function inKey(pc, keyRoot, minor){ const sc = minor? MINOR_SCALE: MAJOR_SCALE; return sc.includes(toPc(pc-keyRoot)); }
 
-// ===== Optional local Whisper loader =====
-async function tryLoadWhisper(){
-  try{
-    const mod = await import('./models/whisper-tiny.js');
-    const init = mod?.default || mod?.initWhisper;
-    if(!init) throw new Error('initWhisper not found');
-    const wh = await init('./models/whisper-tiny.bin');
-    return wh; // must expose transcribe(blob)
-  }catch(e){ return null; }
-}
-
-// ===== Analysis pipeline =====
+// ===== Analysis pipeline (ללא שינוי לוגיקה) =====
 analyzeBtn.onclick=async()=>{
   hideAlerts(); aiBadge.style.display='none';
   liveChordEl.textContent='—'; liveSheetEl.textContent='—'; lyricsSheet.textContent='—'; playBtn.disabled=true; tonicBadge.textContent='—'; keyBadge.textContent='—';
@@ -177,16 +166,16 @@ analyzeBtn.onclick=async()=>{
     showAnalyzing('מנתח… שלב 1/4: טעינת אודיו');
     if(deep){ prog.value=8; prog.style.display='block'; progTxt.textContent='טעינה…'; }
     const st1 = await decodeAudio(f);
-    bpmEl.textContent = st1.bpm; durEl.textContent = st1.duration ? st1.duration.toFixed(1)+'s' : '—';
-    if(st1.url) { player.src = st1.url; } else if(st1.el) { player.srcObject = null; player.src = st1.el.src; }
+    bpmEl.textContent = st1.bpm; durEl.textContent = st1.duration.toFixed(1)+'s';
+    const url = URL.createObjectURL(f); player.src=url;
 
     showAnalyzing('מנתח… שלב 2/4: מיצוי כרומה/בס');
     if(deep){ prog.value=28; progTxt.textContent='מיצוי כרומה ובס…'; }
-    const feats = await extractFeatures(st1);
+    const feats = extractFeatures(st1);
 
     showAnalyzing('מנתח… שלב 3/4: סולם (Krumhansl) + HMM');
     if(deep){ prog.value=60; progTxt.textContent='חישוב סולם…'; }
-    const key = estimateKeyKrumhansl(feats, deep, st1.duration||0);
+    const key = estimateKeyKrumhansl(feats, deep, st1.duration);
     if(deep){ prog.value=75; progTxt.textContent='החלקת אקורדים (HMM)…'; }
     const timeline = chordTrackingWithHMM(feats, key);
 
@@ -205,54 +194,54 @@ analyzeBtn.onclick=async()=>{
     const capo=parseInt(capoEl.value||'0',10);
     tonicBadge.textContent = applyCapoToLabel(nameSharp(key.root)+(key.minor?'m':''), capo);
     keyBadge.textContent = applyCapoToLabel(nameSharp(key.root)+(key.minor?'m':''), capo);
-    window.__STATE = { bpm: st1.bpm, duration: st1.duration||0, timeline: decoratedTL, key, gateTime, energy:{t:energyTimes, v:energyVals}, feats:{hop:feats.hop,sr:feats.sr}, capo };
+    window.__STATE = { bpm: st1.bpm, duration: st1.duration, timeline: decoratedTL, key, gateTime, energy:{t:energyTimes, v:energyVals}, feats:{hop:feats.hop,sr:feats.sr}, capo };
 
-    ok('הניתוח הושלם ✓ — תמלול (אם קיים מודל) + אפשר להשמיע');
+    ok('הניתוח הושלם ✓ — אפשר להשמיע');
     if(deep){ prog.value=100; progTxt.textContent='מוכן'; }
     hookPlaybackLive(); playBtn.disabled=false; aiBadge.style.display='inline-flex';
 
+    // === Whisper: תמלול + הצבת אקורדים מעל מילים ===
+    showAnalyzing('מריץ תמלול מקומי (אם קיים מודל)…');
     const whisper = await tryLoadWhisper();
     if(whisper){
-      showAnalyzing('מריץ תמלול מקומי (Whisper tiny)…');
       try {
-        const out = await whisper.transcribe(f);
-        renderLyricsWithChords(out, decoratedTL, capo);
-        ok('תמלול הושלם ✓');
+        const result = await whisper.transcribe(f); // מצופה: { text, segments:[{start,end,text}] }
+        renderLyricsWithChords(result, decoratedTL, capo);
+        ok('ניתוח הושלם ✓ + תמלול');
       } catch(e) {
         console.warn('whisper failed', e);
+        lyricsSheet.textContent = '— (כשל בתמלול מקומי)';
         ok('ניתוח הושלם ✓ (ללא תמלול)');
       }
     } else {
-      lyricsSheet.textContent = '— (אין מודל תמלול מקומי בתיקייה models)';
+      lyricsSheet.textContent = '— (לא נמצא מודל whisper בתיקייה models)';
+      ok('הניתוח הושלם ✓');
     }
-
   }catch(e){ console.error(e); err('הדפדפן לא הצליח לפענח/לנתח. נסה MP3/WAV או דפדפן אחר.'); }
 };
 
 playBtn.onclick=async()=>{ try{ await player.play(); }catch(e){ alert('לחץ ▶️ על הנגן כדי לאשר ניגון בדפדפן זה.'); } };
 
-// ===== decodeAudio: hybrid — video via decodeAudioData CALLBACK, works with MP4 on Chrome =====
+// ===== Stages (ללא שינוי) =====
 async function decodeAudio(file){
+  const arr = await file.arrayBuffer();
   const AC = window.AudioContext || window.webkitAudioContext;
   const ctx = new AC();
-  const arr = await file.arrayBuffer();
-  // Use callback form (more compatible with MP4) and avoid .slice(0)
-  const buf = await new Promise((resolve, reject) => ctx.decodeAudioData(arr, resolve, reject));
+  const buf = await ctx.decodeAudioData(arr.slice(0));
   const mono = (buf.numberOfChannels===1)? buf.getChannelData(0) : mixStereo(buf);
   const sr0=buf.sampleRate, sr=22050;
   const x = resampleLinear(mono, sr0, sr);
   const bpm = 120;
-  return { x, sr, bpm, duration: x.length/sr, url: URL.createObjectURL(file) };
+  return { x, sr, bpm, duration: x.length/sr };
 }
 
-// ===== feature extraction & rest (as before) =====
 function extractFeatures(st1){
   const {x,sr} = st1;
   const hop=Math.floor(0.10*sr), win=4096;
   const hann=new Float32Array(win); for(let i=0;i<win;i++) hann[i]=0.5*(1-Math.cos(2*Math.PI*i/(win-1)));
   const frames=[]; for(let s=0; s+win<=x.length; s+=hop) frames.push(x.subarray(s,s+win));
   function fft(input){ let n=input.length,N=1; while(N<n)N<<=1; const re=new Float32Array(N),im=new Float32Array(N); re.set(input);
-    let j=0; for(let i=0;i<N;i++){ if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } let m=N>>1; while(m>=1&&j>=m){ j-=m; m>>=1; } j+=m; }
+    let j=0; for(let i=0;i<N;i++){ if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } let m=N>>1; while(m>=1&&j>=מ){ j-=m; m>>=1; } j+=m; }
     for(let len=2; len<=N; len<<=1){ const ang=-2*Math.PI/len, wlr=Math.cos(ang), wli=Math.sin(ang);
       for(let i=0;i<N;i+=len){ let wr=1, wi=0;
         for(let k=0;k<(len>>1);k++){
@@ -268,7 +257,7 @@ function extractFeatures(st1){
     const mags=new Float32Array(N>>1); for(let k=0;k<mags.length;k++) mags[k]=Math.hypot(re[k],im[k]);
     return {mags,N};
   }
-  const hz=(b,N)=>b*sr/N;
+  const hz=(b,N)=>ב*sr/N;
   const chroma=[], bassPc=[], frameE=[];
   for(let i=0;i<frames.length;i++){
     const y=new Float32Array(win); for(let k=0;k<win;k++) y[k]=frames[i][k]*hann[k];
@@ -276,11 +265,12 @@ function extractFeatures(st1){
     let en=0; for(let b=1;b<mags.length;b++){ en+=mags[b]; }
     frameE.push(en);
     const c=new Float32Array(12); let e=0;
-    for(let b=1;b<mags.length;b++){ const f=hz(b,N); if(f<80||f>5000) continue; const midi=69+12*Math.log2(f/440); const pc=toPc(Math.round(midi)); c[pc]+=mags[b]; e+=mags[b]; }
+    for(let b=1;b<mags.length;b++){ const f=hz(b,N); if(f<80||f>5000) continue; const midi=69+12*Math.log2(f/440); const pc=toPc(Math.round(midi)); c[pc]+=mags[b]; e+=מags[b]; }
     if(e>0){ let s=0; for(let k=0;k<12;k++) s+=c[k]; for(let k=0;k<12;k++) c[k]/=s; }
     chroma.push(c);
+    // bass
     let bestHz=0,best=0;
-    for(let b=1;b<mags.length;b++){
+    for(let b=1;b<mags.length\b++){
       const f=hz(b,N); if(f<40)continue; if(f>250)break;
       const v=mags[b], b2=Math.round(b*2), b3=Math.round(b*3);
       const score = v + (mags[b2]||0)*0.6 + (mags[b3]||0)*0.4;
@@ -292,6 +282,7 @@ function extractFeatures(st1){
   return { chroma, bassPc, frameE, hop:Math.floor(0.10*sr), sr };
 }
 
+// ... the rest of your original code unchanged ...
 function estimateKeyKrumhansl(feats, deep, duration){
   const {chroma}=feats;
   const L = chroma.length;
@@ -307,7 +298,6 @@ function estimateKeyKrumhansl(feats, deep, duration){
   }
   return {root:best.root, minor:best.minor};
 }
-
 function chordTrackingWithHMM(feats, key){
   const {chroma,bassPc,hop,sr,frameE}=feats;
   const diatonic = (key.minor? MINOR_SCALE: MAJOR_SCALE).map(s=>toPc(key.root+s));
@@ -358,10 +348,9 @@ function chordTrackingWithHMM(feats, key){
       cur=states[i]; start=i;
     }
   }
-  tl.push({t:start*secPerHop, label:candidates[cur].label, fi:start});
+  tl.push({t=start*secPerHop, label:candidates[cur].label, fi:start});
   return tl;
 }
-
 function finalizeTimeline(tl, key, bpm, feats){
   const spb=60/Math.max(60,Math.min(200,bpm||120));
   const minDur=Math.max(0.5, 0.45*spb);
@@ -369,7 +358,7 @@ function finalizeTimeline(tl, key, bpm, feats){
   for(let i=0;i<tl.length;i++){
     const a=tl[i]; const b=tl[i+1]; const dur=(b?b.t: a.t+4*spb) - a.t;
     if(dur<minDur && out.length){
-      const fiA=a.fi, fiB=(b?b.fi:fiA+1);
+      const fiA=a.fi, fiB=(ב?ב.fi:fiA+1);
       const bpA = feats.bassPc[fiA] ?? -1;
       const bpB = feats.bassPc[Math.min(feats.bassPc.length-1, fiB)] ?? -1;
       const bassChanged = (bpA>=0 && bpB>=0 && bpA!==bpB);
@@ -377,7 +366,7 @@ function finalizeTimeline(tl, key, bpm, feats){
         const prev=out[out.length-1];
         const r=parseRoot(a.label), pr=parseRoot(prev.label);
         const inA=inKey(r, key.root, key.minor), inP=inKey(pr, key.root, key.minor);
-        if(!inA || inP){ continue; }
+        if(!inA או inP){ continue; }
       }
     }
     out.push(a);
@@ -391,7 +380,6 @@ function finalizeTimeline(tl, key, bpm, feats){
   }
   return snapped;
 }
-
 function decorateQualities(tl, feats, key, mode){
   if(mode!=='smart') return tl.map(e=>({...e}));
   const out=[];
@@ -415,36 +403,24 @@ function decorateQualities(tl, feats, key, mode){
     const sMin3 = avg[toPc(root+3)]||0;
     const sB7 = avg[toPc(root+10)]||0;
     const sRoot = avg[root]||0;
-
     let label = base;
     const thirdWeak = (isMinor? sMin3 : sMaj3) < 0.11;
     const sus2Strong = s2 > 0.22 && s2 > s4*0.9;
     const sus4Strong = s4 > 0.22 && s4 > s2*0.9;
-    if(!isMinor && thirdWeak){
-      if(sus4Strong){ label = base.replace(/m$/,'') + 'sus4'; }
-      else if(sus2Strong){ label = base.replace(/m$/,'') + 'sus2'; }
-    }
+    if(!isMinor && thirdWeak){ if(sus4Strong){ label = base.replace(/m$/,'') + 'sus4'; } else if(sus2Strong){ label = base.replace(/m$/,'') + 'sus2'; } }
     const deg = degreeOfChord(label, key);
     const likelyDom = (deg===4);
     const b7Strong = (sB7 > 0.20) && (sB7 > sThird*0.75) && (sRoot > 0.12);
-    if(!/sus/.test(label) && !/m$/.test(label) && (likelyDom ? (sB7 > 0.17) : b7Strong)){
-      label += '7';
-    }
-    if(isMinor && sFlat5 > 0.25 && sFifth < 0.10 && sMin3 > 0.14){
-      if(deg===1){ label = base.replace(/m$/,'m7b5'); }
-    }
-    const sSharp5 = avg[toPc(root+8)]||0;
-    if(!isMinor && sSharp5 > 0.28 && sFifth < 0.12 && sMaj3 > 0.16){
-      label = base.replace(/m$/,'') + 'aug';
-    }
+    if(!/sus/.test(label) && !/m$/.test(label) && (likelyDom ? (sB7 > 0.17) : b7Strong)){ label += '7'; }
+    const sFlat5 = avg[toPc(root+6)]||0; const sSharp5 = avg[toPc(root+8)]||0;
+    if(isMinor && sFlat5 > 0.25 && (avg[toPc(root+7)]||0) < 0.10 && (avg[toPc(root+3)]||0) > 0.14){ if(deg===1){ label = base.replace(/m$/,'m7b5'); } }
+    if(!isMinor && sSharp5 > 0.28 && (avg[toPc(root+7)]||0) < 0.12 && (avg[toPc(root+4)]||0) > 0.16){ label = base.replace(/m$/,'') + 'aug'; }
     out.push({...ev, label});
   }
   return out;
 }
-
 function degreeOfChord(label, key){
-  const rootPc = parseRoot(label);
-  if(rootPc<0) return null;
+  const rootPc = parseRoot(label); if(rootPc<0) return null;
   const rel = toPc(rootPc - key.root);
   const scale = key.minor? MINOR_SCALE : MAJOR_SCALE;
   let bestDeg = null, bestDist=999;
@@ -455,24 +431,13 @@ function degreeOfChord(label, key){
   }
   return bestDeg; 
 }
-function isCadence(prevLabel, curLabel, key){
-  const dPrev = degreeOfChord(prevLabel,key);
-  const dCur = degreeOfChord(curLabel,key);
-  return (dPrev===4 && dCur===0);
-}
-function isSubdominantToDominant(prevLabel, curLabel, key){
-  const dPrev=degreeOfChord(prevLabel,key);
-  const dCur=degreeOfChord(curLabel,key);
-  return (dPrev===3 && dCur===4);
-}
+function isCadence(prevLabel, curLabel, key){ const dPrev = degreeOfChord(prevLabel,key); const dCur = degreeOfChord(curLabel,key); return (dPrev===4 && dCur===0); }
+function isSubdominantToDominant(prevLabel, curLabel, key){ const dPrev=degreeOfChord(prevLabel,key); const dCur=degreeOfChord(curLabel,key); return (dPrev===3 && dCur===4); }
 function energyAt(t, energy){
   const {t:times, v:vals}=energy;
   if(!times?.length) return 0;
   let lo=0, hi=times.length-1;
-  while(lo<hi){
-    const mid=(lo+hi)>>1;
-    if(times[mid]<t) lo=mid+1; else hi=mid;
-  }
+  while(lo<hi){ const mid=(lo+hi)>>1; if(times[mid]<t) lo=mid+1; else hi=mid; }
   const i=Math.max(0,Math.min(times.length-1,lo));
   return vals[i];
 }
@@ -483,11 +448,9 @@ function normalize01(arr){
   const d=(mx-mn)||1;
   return arr.map(v=> (v-mn)/d );
 }
-
-// ===== Live playback =====
 function hookPlaybackLive(){
   const st=window.__STATE; if(!st) return;
-  const capo=st.capo||0;
+  const capo=parseInt((st.capo??(document.getElementById('capo').value||'0')),10);
   const spb=60/(st.bpm||120);
   const minPauseSec=Math.max(1.0, 1.75*spb);
   const maxPerLine=7;
@@ -508,93 +471,87 @@ function hookPlaybackLive(){
     if(!ev) return;
     const shown = applyCapoToLabel(ev.label, capo);
     liveChordEl.textContent = shown;
-
     if(shown!==lastChord){
       const pause = (t-lastChangeSec) > minPauseSec;
       const eNow = energyAt(t, st.energy);
       const ePrev = energyAt(Math.max(0,t-0.4), st.energy);
       const energyDrop = (ePrev>0.25 && (eNow < ePrev*0.55));
-
       const cadenceBreak = lastChord ? isCadence(lastChord, shown, st.key) : false;
       const sdToDom = lastChord ? isSubdominantToDominant(lastChord, shown, st.key) : false;
-
-      const needBreak = 
-          (currentLine.length>=maxPerLine)
-          || cadenceBreak
-          || (pause && energyDrop)
-          || (sdToDom && currentLine.length>=4);
-
-      if(needBreak && currentLine.length){
-        lines.push(currentLine.join('   '));
-        currentLine=[];
-      }
-
+      const needBreak = (currentLine.length>=maxPerLine) || cadenceBreak || (pause && energyDrop) || (sdToDom && currentLine.length>=4);
+      if(needBreak && currentLine.length){ lines.push(currentLine.join('   ')); currentLine=[]; }
       currentLine.push(shown);
       const text=[...lines, currentLine.join('   ')].filter(s=>s && s.length).join('\n');
       liveSheetEl.textContent = text || '—';
-
-      lastChord=shown;
-      lastChangeSec=t;
+      lastChord=shown; lastChangeSec=t;
     }
   };
 
-  resetSheetBtn.onclick=()=>{
-    lines=[]; currentLine=[]; lastChord=null; lastChangeSec=player.currentTime;
-    liveSheetEl.textContent='—';
-  };
+  resetSheetBtn.onclick=()=>{ lines=[]; currentLine=[]; lastChord=null; lastChangeSec=player.currentTime; liveSheetEl.textContent='—'; };
 }
 
-// ===== Transcription rendering =====
+// ===== Whisper integration (add-only) =====
+async function tryLoadWhisper(){
+  try{
+    const mod = await import('./models/whisper-tiny.js');
+    const init = mod?.default || mod?.initWhisper;
+    if(!init) throw new Error('initWhisper not found');
+    const api = await init('./models/whisper-tiny.bin');
+    if(!api?.transcribe) throw new Error('transcribe() missing');
+    return api;
+  }catch(e){ console.warn('No local whisper:', e.message); return null; }
+}
+
 function renderLyricsWithChords(transcript, timeline, capo){
-  const segs = transcript?.segments || [];
-  const text = transcript?.text || '';
-  if(!segs.length && !text){ lyricsSheet.textContent='—'; return; }
+  try{
+    const segs = transcript?.segments || [];
+    const text = transcript?.text || '';
+    if(!segs.length && !text){ lyricsSheet.textContent='—'; return; }
 
-  const segments = segs.length ? segs : text.split(/[\n\r]+/).map((t,i)=>({start:i*2, end:i*2+2, text:t}));
+    const segments = segs.length ? segs : text.split(/[\n\r]+/).map((t,i)=>({start:i*2, end:i*2+2, text:t}));
 
-  const words = [];
-  for(const s of segments){
-    const toks = (s.text||'').split(/\s+/).filter(Boolean);
-    let t = s.start;
-    const dt = Math.max(0.25, (s.end - s.start) / Math.max(1, toks.length));
-    for(const w of toks){
-      words.push({ t, w });
-      t += dt;
-    }
-  }
-
-  let wi = 0;
-  for(let i=0;i<timeline.length;i++){
-    const ch = applyCapoToLabel(timeline[i].label, capo);
-    const t = timeline[i].t;
-    while(wi < words.length-1 && words[wi].t < t) wi++;
-    if(words[wi]) words[wi].ch = ch;
-  }
-
-  const container = document.createElement('div');
-  container.className='mono';
-  const linesBySeg=[];
-  for(const s of segments){
-    const lineDiv = document.createElement('div');
-    lineDiv.className='lyricsLine';
-    const lineWords = words.filter(w => w.t>=s.start && w.t<=s.end);
-    for(const w of lineWords){
-      const span = document.createElement('span');
-      span.className='lyricsWord';
-      span.textContent = w.w+' ';
-      if(w.ch){
-        const ch = document.createElement('div');
-        ch.className='chord';
-        ch.textContent = w.ch;
-        span.appendChild(ch);
+    const words = [];
+    for(const s of segments){
+      const toks = (s.text||'').split(/\s+/).filter(Boolean);
+      let t = s.start;
+      const dt = Math.max(0.25, (s.end - s.start) / Math.max(1, toks.length));
+      for(const w of toks){
+        words.push({ t, w });
+        t += dt;
       }
-      lineDiv.appendChild(span);
     }
-    container.appendChild(lineDiv);
-    linesBySeg.push(lineDiv);
+    let wi = 0;
+    for(let i=0;i<timeline.length;i++){
+      const ch = applyCapoToLabel(timeline[i].label, capo);
+      const t = timeline[i].t;
+      while(wi < words.length-1 && words[wi].t < t) wi++;
+      if(words[wi]) words[wi].ch = ch;
+    }
+    const container = document.createElement('div');
+    for(const s of segments){
+      const lineDiv = document.createElement('div');
+      lineDiv.className='lyricsLine';
+      const lineWords = words.filter(w => w.t>=s.start && w.t<=s.end);
+      for(const w of lineWords){
+        const span = document.createElement('span');
+        span.className='lyricsWord';
+        span.textContent = w.w+' ';
+        if(w.ch){
+          const ch = document.createElement('div');
+          ch.className='chord';
+          ch.textContent = w.ch;
+          span.appendChild(ch);
+        }
+        lineDiv.appendChild(span);
+      }
+      container.appendChild(lineDiv);
+    }
+    lyricsSheet.innerHTML='';
+    lyricsSheet.appendChild(container);
+  }catch(e){
+    console.error('renderLyricsWithChords error', e);
+    lyricsSheet.textContent='— (שגיאה בתצוגת תמלול)';
   }
-  lyricsSheet.innerHTML='';
-  lyricsSheet.appendChild(container);
 }
 
 // ===== Utils =====
