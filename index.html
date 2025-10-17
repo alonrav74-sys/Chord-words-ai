@@ -1,4 +1,102 @@
+
 <!DOCTYPE html>
-<html><head><meta charset='utf-8'><title>Chord Finder AI v9.4.6 + Whisper</title></head>
-<body><h2>Chord Finder AI + Whisper Tiny</h2>
-<p>Upload your <code>ggml-tiny.bin</code> model to <code>/models</code> folder.</p></body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChordFinder-AI 9.5</title>
+  <meta name="theme-color" content="#0b0b0d" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <style>
+    body {
+      background: #0b0b0d;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      margin: 0; padding: 0;
+      text-align: center;
+    }
+    h1 { margin: 1rem 0 0.5rem; font-size: 1.8rem; }
+    button {
+      background: #1f2937; border: 1px solid #374151;
+      color: #fff; padding: 10px 16px; border-radius: 12px;
+      margin: 0.25rem; cursor: pointer;
+    }
+    #output { white-space: pre-wrap; text-align: left; margin: 1rem auto; width: 90%; max-width: 700px; }
+    .line { margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.4rem; }
+    .chord { color: #8ef; font-weight: bold; margin-right: 0.3rem; }
+    canvas { width: 90%; max-width: 700px; height: 200px; border-radius: 10px; background: #111827; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>ChordFinder-AI 9.5 (Offline)</h1>
+  <p>Whisper (local tiny model) + chord detector + synced play page</p>
+
+  <div>
+    <input type="file" id="fileInput" accept="audio/*,video/*" />
+    <button id="analyzeBtn">Analyze</button>
+  </div>
+
+  <canvas id="viz"></canvas>
+
+  <div id="output"></div>
+
+  <script type="module">
+    import initWhisper from "./models/whisper-tiny.js"; // assumes precompiled tiny whisper.js
+    import { detectChords } from "./worker.js";
+
+    const fileInput = document.getElementById("fileInput");
+    const btn = document.getElementById("analyzeBtn");
+    const viz = document.getElementById("viz");
+    const ctx2d = viz.getContext("2d");
+    const output = document.getElementById("output");
+
+    let whisper;
+
+    async function loadModel() {
+      if (!whisper) {
+        output.innerText = "Loading Whisper model...";
+        whisper = await initWhisper("./models/whisper-tiny.bin");
+        output.innerText = "Model ready.";
+      }
+    }
+
+    function drawChroma(chroma, chord) {
+      const labels = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+      const w = viz.width, h = viz.height;
+      ctx2d.clearRect(0, 0, w, h);
+      const barW = w / 12;
+      for (let i=0;i<12;i++){
+        const v = chroma[i] || 0;
+        const barH = v * (h-30);
+        ctx2d.fillStyle = "#38bdf8";
+        ctx2d.fillRect(i*barW+4, h-barH-20, barW-8, barH);
+        ctx2d.fillStyle="#fff";
+        ctx2d.fillText(labels[i], i*barW+barW/2-6, h-6);
+      }
+      ctx2d.fillStyle="#fff";
+      ctx2d.fillText(`Chord: ${chord}`, 10, 20);
+    }
+
+    btn.onclick = async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return alert("Choose an audio file first");
+      await loadModel();
+      output.innerText = "Analyzing file...";
+
+      const audioURL = URL.createObjectURL(file);
+      const audioCtx = new AudioContext();
+      const audioEl = new Audio(audioURL);
+      const src = audioCtx.createMediaElementSource(audioEl);
+      const result = await detectChords(src, audioCtx, whisper, (frame) => {
+        drawChroma(frame.chroma, frame.label);
+      });
+      audioEl.play();
+
+      output.innerHTML = result.lines.map(l =>
+        `<div class='line'>${l.chords.map(c=>`<span class='chord'>${c}</span>`).join("")}${l.text}</div>`
+      ).join("");
+    };
+  </script>
+</body>
+</html>
