@@ -42,8 +42,12 @@
   <div id="output"></div>
 
   <script type="module">
-    import initWhisper from "./models/whisper-tiny.js"; // assumes precompiled tiny whisper.js
-    import { detectChords } from "./worker.js";
+    import initWhisper from "./models/whisper-tiny.js"; 
+    import { detectChords } from "./service-worker.js";
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+    }
 
     const fileInput = document.getElementById("fileInput");
     const btn = document.getElementById("analyzeBtn");
