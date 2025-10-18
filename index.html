@@ -38,7 +38,7 @@
 <body>
   <div class="wrap">
     <h1>🎵 Chord Finder AI — v9.4.6 (Harmonic Live Sheet) <span class="mutedSmall">• harmonic+pause + cautious 7/sus</span></h1>
-    <div class="muted">mnוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • בלי דף סטטי • כותב משמאל לימין, עד 7 אקורדים בשורה.</div>
+    <div class="muted">מנוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • בלי דף סטטי • כותב משמאל לימין, עד 7 אקורדים בשורה.</div>
 
     <section class="panel">
       <div class="row">
@@ -94,6 +94,8 @@
         <h3 style="margin:8px 0 4px; font-size:16px; color:#cbd5e1;">🎤 מילים + אקורדים</h3>
         <div id="lyricsSheet" class="mono">—</div>
       </div>
+      <!-- בלוק שגיאת תמלול ברור -->
+      <div id="whisperError" class="pill err" style="display:none"></div>
     </section>
   </div>
 
@@ -113,11 +115,13 @@ const capoEl=document.getElementById('capo'); const tonicBadge=document.getEleme
 const liveChordEl=document.getElementById('liveChord'); const liveSheetEl=document.getElementById('liveSheet');
 const resetSheetBtn=document.getElementById('resetSheet'); const aiBadge=document.getElementById('aiBadge');
 const lyricsBlock=document.getElementById('lyricsBlock'); const lyricsSheet=document.getElementById('lyricsSheet');
+const whisperErr=document.getElementById('whisperError');
 
 function showAnalyzing(stepText){ statusEl.innerHTML='<span class="spin"></span> '+stepText; statusEl.className='pill warn'; statusEl.style.display='inline-flex'; }
 function ok(msg){ statusEl.textContent=msg; statusEl.className='pill ok'; statusEl.style.display='inline-flex'; }
 function err(msg){ errorEl.textContent=msg; errorEl.style.display='inline-flex'; }
-function hideAlerts(){ statusEl.style.display='none'; errorEl.style.display='none'; prog.style.display='none'; progTxt.textContent=''; gateChip.style.display='none'; }
+function hideAlerts(){ statusEl.style.display='none'; errorEl.style.display='none'; prog.style.display='none'; progTxt.textContent=''; gateChip.style.display='none'; whisperErr.style.display='none'; whisperErr.textContent=''; }
+function whisperErrorShow(msg){ whisperErr.textContent='⚠️ שגיאה בתמלול (Whisper): '+msg; whisperErr.style.display='inline-flex'; console.warn('Whisper error:', msg); }
 
 // ===== Musical helpers =====
 const NOTES_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -155,23 +159,23 @@ analyzeBtn.onclick=async()=>{
   const f=fileEl.files?.[0]; if(!f){ err('בחר קובץ אודיו/וידאו'); return; }
   try{
     const deep=deepEl.checked;
-    showAnalyzing('mnתח… שלב 1/4: טעינת אודיו');
+    showAnalyzing('מנתח… שלב 1/4: טעינת אודיו');
     if(deep){ prog.value=8; prog.style.display='block'; progTxt.textContent='טעינה…'; }
     const st1 = await decodeAudio(f);
     bpmEl.textContent = st1.bpm; durEl.textContent = st1.duration.toFixed(1)+'s';
     const url = URL.createObjectURL(f); player.src=url;
 
-    showAnalyzing('mnתח… שלב 2/4: מיצוי כרומה/בס');
+    showAnalyzing('מנתח… שלב 2/4: מיצוי כרומה/בס');
     if(deep){ prog.value=28; progTxt.textContent='מיצוי כרומה ובס…'; }
     const feats = extractFeatures(st1);
 
-    showAnalyzing('mnתח… שלב 3/4: סולם (Krumhansl) + HMM');
+    showAnalyzing('מנתח… שלב 3/4: סולם (Krumhansl) + HMM');
     if(deep){ prog.value=60; progTxt.textContent='חישוב סולם…'; }
     const key = estimateKeyKrumhansl(feats, deep, st1.duration);
     if(deep){ prog.value=75; progTxt.textContent='החלקת אקורדים (HMM)…'; }
     const timeline = chordTrackingWithHMM(feats, key);
 
-    showAnalyzing('mnתח… שלב 4/4: ניקוי וזmnי הצגה');
+    showAnalyzing('מנתח… שלב 4/4: ניקוי וזמני הצגה');
     if(deep){ prog.value=92; progTxt.textContent='Min-דuration, Grid ושמירת קישוטי 7/Bass…'; }
     const finalTL = finalizeTimeline(timeline, key, st1.bpm, feats);
 
@@ -193,7 +197,7 @@ analyzeBtn.onclick=async()=>{
     if(deep){ prog.value=100; progTxt.textContent='מוכן'; }
     hookPlaybackLive(); playBtn.disabled=false; aiBadge.style.display='inline-flex';
 
-    // === תמלול Whisper מקומי (he/en) — עם שורת סטטוס ===
+    // === תמלול Whisper מקומי (he/en) — עם הודעת סטטוס ושגיאה ברורה ===
     await runWhisperAndRender(f, decoratedTL, capo);
   }catch(e){ console.error(e); err('הדפדפן לא הצליח לפענח/לנתח. נסה MP3/WAV או דפדפן אחר.'); }
 };
@@ -219,7 +223,7 @@ function extractFeatures(st1){
   const hann=new Float32Array(win); for(let i=0;i<win;i++) hann[i]=0.5*(1-Math.cos(2*Math.PI*i/(win-1)));
   const frames=[]; for(let s=0; s+win<=x.length; s+=hop) frames.push(x.subarray(s,s+win));
   function fft(input){ let n=input.length,N=1; while(N<n)N<<=1; const re=new Float32Array(N),im=new Float32Array(N); re.set(input);
-    let j=0; for(let i=0;i<N;i++){ if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } let m=N>>1; while(m>=1&&j>=m){ j-=m; m>>=1; } j+=m; }
+    let j=0; for(let i=0;i<N;i++){ if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } let m=N>>1; while(m>=1&&j>=מ){ j-=m; m>>=1; } j+=m; }
     for(let len=2; len<=N; len<<=1){ const ang=-2*Math.PI/len, wlr=Math.cos(ang), wli=Math.sin(ang);
       for(let i=0;i<N;i+=len){ let wr=1, wi=0;
         for(let k=0;k<(len>>1);k++){
@@ -227,7 +231,7 @@ function extractFeatures(st1){
           const vr=re[i+k+(len>>1)]*wr - im[i+k+(len>>1)]*wi;
           const vi=re[i+k+(len>>1)]*wi + im[i+k+(len>>1)]*wr;
           re[i+k]=ur+vr; im[i+k]=ui+vi;
-          re[i+k+(len>>1)]=ur-vr; im[i+k+(len>>1)]=ui-vi;
+          re[i+k+(len>>1)]=ur-вр; im[i+k+(len>>1)]=ui-ви;
           const nwr=wr*wlr - wi*wli; wi=wr*wli + wi*wlr; wr=nwr;
         }
       }
@@ -322,11 +326,11 @@ function chordTrackingWithHMM(feats, key){
   let cur=states[0], start=0;
   for(let i=1;i<M;i++){
     if(states[i]!==cur){
-      tl.push({t:start*secPerHop, label=candidates[cur].label, fi:start});
+      tl.push({t:start*secPerHop, label:candidates[cur].label, fi:start});
       cur=states[i]; start=i;
     }
   }
-  tl.push({t:start*secPerHop, label=candidates[cur].label, fi:start});
+  tl.push({t:start*secPerHop, label:candidates[cur].label, fi:start});
   return tl;
 }
 
@@ -345,7 +349,7 @@ function finalizeTimeline(tl, key, bpm, feats){
         const prev=out[out.length-1];
         const r=parseRoot(a.label), pr=parseRoot(prev.label);
         const inA=inKey(r, key.root, key.minor), inP=inKey(pr, key.root, key.minor);
-        if(!inA או inP){ continue; }
+        if(!inA || inP){ continue; }
       }
     }
     out.push(a);
@@ -445,7 +449,7 @@ function normalize01(arr){
   let mn=Infinity,mx=-Infinity;
   for(const v of arr){ if(Number.isFinite(v)){ if(v<mn) mn=v; if(v>mx) mx=v; } }
   const d=(mx-mn)||1;
-  return arr.map(v=> (v-mנ)/d );
+  return arr.map(v=> (v-mn)/d );
 }
 
 // ===== Live playback =====
@@ -453,7 +457,7 @@ function hookPlaybackLive(){
   const st=window.__STATE; if(!st) return;
   const capo=parseInt(capoEl.value||'0',10);
   const spb=60/(st.bpm||120);
-  const minPauseSec=Math.max(1.0, 1.75*spb);
+  const minPauseSec=Math.max(1.0, 1.75*spב);
   const maxPerLine=7;
 
   let lines=[]; let currentLine=[]; 
@@ -524,7 +528,7 @@ function detectStartGate(feats){
       let mx=0; for(let k=0;k<12;k++) mx=Math.max(mx, chroma[i][k]||0);
       chromaPeak = mx>0.18;
     }
-    if((strong || hasBass) && chromaPeak){ run++; if(run>=needStable) return i-needStable+1; }
+    if((strong או hasBass) && chromaPeak){ run++; if(run>=needStable) return i-needStable+1; }
     else run=0;
   }
   return 0;
@@ -532,25 +536,67 @@ function detectStartGate(feats){
 
 // ===== Utils =====
 function mixStereo(buf){ const a=buf.getChannelData(0), b=(buf.numberOfChannels>1?buf.getChannelData(1):a); const m=new Float32Array(buf.length); for(let i=0;i<buf.length;i++) m[i]=(a[i]+b[i])*0.5; return m; }
-function resampleLinear(x,sr,target){ const r=target/sr, L=Math.floor(x.length*r), y=new Float32Array(L); for(let i=0;i<L;i++){ const t=i/r, i0=Math.floor(t), i1=Math.min(x.length-1,i0+1), a=t-i0; y[i]=x[i0]*(1-a)+x[i1]*a; } return y; }
+function resampleLinear(x,sר,target){ const r=target/sר, L=Math.floor(x.length*r), y=new Float32Array(L); for(let i=0;i<L;i++){ const t=i/r, i0=Math.floor(t), i1=Math.min(x.length-1,i0+1), a=t-i0; y[i]=x[i0]*(1-a)+x[i1]*a; } return y; }
 function percentileLocal(arr, p){ const a=[...arr].filter(x=>Number.isFinite(x)).sort((x,y)=>x-y); if(!a.length) return 0; const i=Math.floor((p/100)*(a.length-1)); return a[i]; }
 
-// ===== Whisper integration (local, he/en) =====
+// ===== Whisper integration (local) + rich errors =====
 async function runWhisperAndRender(file, timeline, capo){
   try{
     showAnalyzing('מתמלל... (Whisper מקומי)');
-    // נטען את mnוע ה-Whisper המקומי
-    const api = await import('./models/whisper-tiny.js').catch(()=>null);
-    if(!api || !api.loadWhisper){ ok('הניתוח הושלם ✓'); return; }
-    const inst = await api.loadWhisper('./models/ggml-tiny.bin');
-    // נקריא את התוכן הגולמי (כדי להעביר לאינפרנס)
-    const buff = await file.arrayBuffer();
-    const result = await api.transcribe(inst, buff); // צפוי להחזיר {text, segments:[{start,end,text}]}
-    if(!result) { ok('הניתוח הושלם ✓'); return; }
+    // בדיקת קיום קבצים לפני import
+    const base = './models/';
+    const needed = ['whisper-tiny.js','whisper-tiny.wasm','whisper-tiny.worker.js','ggml-tiny.bin'];
+    for (const n of needed){
+      try{ await fetch(base+n,{method:'HEAD'}); }catch(_){ whisperErrorShow(`לא נמצא ${n} בתיקייה models/`); ok('הניתוח הושלם ✓ (ללא תמלול)'); return; }
+    }
+
+    // טעינת המודול
+    let api=null;
+    try{
+      api = await import('./models/whisper-tiny.js');
+    }catch(e){
+      if (location.protocol === 'file:'){
+        whisperErrorShow('ייבוא מודול נחסם תחת file:// — יש לפתוח דרך שרת מקומי (למשל http://localhost).');
+      }else{
+        whisperErrorShow('כשל בטעינת whisper-tiny.js: '+(e?.message||e));
+      }
+      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+    }
+    if(!api?.loadWhisper || !api?.transcribe){
+      whisperErrorShow('whisper-tiny.js נטען אך הפונקציות loadWhisper/transcribe לא קיימות.');
+      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+    }
+
+    // אתחול מנוע + תמלול
+    let inst=null;
+    try{
+      inst = await api.loadWhisper('./models/ggml-tiny.bin');
+    }catch(e){
+      whisperErrorShow('כשל באתחול המנוע מול ggml-tiny.bin: '+(e?.message||e));
+      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+    }
+
+    let ab=null;
+    try{ ab = await file.arrayBuffer(); }
+    catch(e){ whisperErrorShow('כשל בקריאת הקובץ לתמלול: '+(e?.message||e)); ok('הניתוח הושלם ✓ (ללא תמלול)'); return; }
+
+    let result=null;
+    try{
+      result = await api.transcribe(inst, ab);
+    }catch(e){
+      whisperErrorShow('כשל בהרצת התמלול: '+(e?.message||e));
+      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+    }
+
+    if(!result || (!result.text && !Array.isArray(result.segments))){
+      whisperErrorShow('התמלול החזיר מבנה ריק או לא תקין.');
+      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+    }
+
     renderLyricsWithChords(result, timeline, capo);
     ok('תמלול הושלם ✓ — הוצגו מילים + אקורדים');
   }catch(e){
-    console.warn('Whisper local failed:', e);
+    whisperErrorShow('שגיאה לא צפויה: '+(e?.message||e));
     ok('הניתוח הושלם ✓ (ללא תמלול)');
   }
 }
