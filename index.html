@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chord Finder AI — v9.4.9 (Harmonic Live Sheet)</title>
+  <title>Chord Finder AI — v9.4.9 (Harmonic Live Sheet • Whisper‑tiny enabled)</title>
   <meta name="theme-color" content="#0b1022" />
   <link rel="manifest" href="manifest.json">
   <style>
     :root{--bg:#0b1022;--panel:#0f172a;--muted:#94a3b8;--text:#e5e7eb;--card:#0a1324;--border:#1b2333;--brand:#22c55e;--accent:#38bdf8;--alert:#f59e0b}
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(160deg,var(--bg),#0a0f1c);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);direction:rtl}
+    body{margin:0;background:linear-gradient(160deg,var(--bg),#0a0f1c);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:#e5e7eb;direction:rtl}
     .wrap{max-width:1120px;margin:auto;padding:18px}
     h1{margin:6px 0 10px;font-size:24px}
-    .muted{color:var(--muted);font-size:14px}
+    .muted{color:#94a3b8;font-size:14px}
     .panel{background:#0c162b;border:1px solid #1f2a40;border-radius:16px;padding:14px;margin-top:12px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     input[type="file"], select, button, input[type="number"]{padding:10px 14px;border-radius:12px;border:1px solid #223;background:#0b1221;color:#cfe3ff;appearance:none;font-weight:700;cursor:pointer}
@@ -25,7 +25,7 @@
     .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #2a3d55;margin:2px 4px;background:#0b1221}
     .ok{border-color:#1f5f3f;color:#d7ffe6;background:#0d2e1f}
     .err{border-color:#5f2323;color:#ffe0e0;background:#3f1d1d}
-    .warn{border-color:#8a6a1f;color:#fff0d9	background:#3a2a0c}
+    .warn{border-color:#8a6a1f;color:#fff0d9;background:#3a2a0c}
     .spin{width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;animation:sp 1s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
     progress{width:240px;height:10px;border-radius:8px;overflow:hidden}
@@ -38,8 +38,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>🎵 Chord Finder AI — v9.4.9 (Harmonic Live Sheet) <span class="mutedSmall">• harmonic+pause + cautious 7/sus</span></h1>
-    <div class="muted">מנוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • בלי דף סטטי • כותב משמאל לימין, עד 7 אקורדים בשורה.</div>
+    <h1>🎵 Chord Finder AI — v9.4.9 (Harmonic Live Sheet • Whisper‑tiny enabled) <span class="mutedSmall">• harmonic+pause + cautious 7/sus</span></h1>
+    <div class="muted">מנוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • כותב משמאל לימין, עד 7 אקורדים בשורה. + Whisper‑tiny אוטומטי (עברית/אנגלית).</div>
 
     <section class="panel">
       <div class="row">
@@ -187,7 +187,7 @@ analyzeBtn.onclick=async()=>{
     if(deep){ prog.value=100; progTxt.textContent='מוכן'; }
     hookPlaybackLive(); playBtn.disabled=false; aiBadge.style.display='inline-flex';
 
-    // === חדש ב-9.4.9: הפעל Whisper אוטומטית אחרי הניתוח
+    // === Whisper auto (he/en) ===
     runWhisperAuto();
   }catch(e){ console.error(e); err('הדפדפן לא הצליח לפענח/לנתח. נסה MP3/WAV או דפדפן אחר.'); }
 };
@@ -332,7 +332,6 @@ function finalizeTimeline(tl, key, bpm, feats){
   for(let i=0;i<tl.length;i++){
     const a=tl[i]; const b=tl[i+1]; const dur=(b?b.t: a.t+4*spb) - a.t;
     if(dur<minDur && out.length){
-      // keep short chord if bass changed strongly around it (captures quick B in Em-B-Em)
       const fiA=a.fi, fiB=(b?b.fi:fiA+1);
       const bpA = feats.bassPc[fiA] ?? -1;
       const bpB = feats.bassPc[Math.min(feats.bassPc.length-1, fiB)] ?? -1;
@@ -346,7 +345,6 @@ function finalizeTimeline(tl, key, bpm, feats){
     }
     out.push(a);
   }
-  // grid snap & unique
   const snapped=[];
   for(const ev of out){
     const q=Math.max(0, Math.round(ev.t/spb)*spb);
@@ -364,29 +362,22 @@ function decorateQualities(tl, feats, key, mode){
   for(const ev of tl){
     const root=parseRoot(ev.label); if(root<0){ out.push(ev); continue; }
     const isMinor=/m$/.test(ev.label);
-    let base=ev.label.replace(/(m|sus2|sus4|dim|aug|7|\(\w+\))$/,'');
+    let base=ev.label.replace(/(m|sus2|sus4|dim|aug|7|\\(\\w+\\))$/,'');
     if(isMinor) base+='m';
-    // window of chroma frames around event
     const i0=Math.max(0, ev.fi-2), i1=Math.min(feats.chroma.length-1, ev.fi+2);
     const avg=new Float32Array(12);
     for(let i=i0;i<=i1;i++){ const c=feats.chroma[i]; for(let p=0;p<12;p++) avg[p]+=c[p]||0; }
     for(let p=0;p<12;p++) avg[p]/=(i1-i0+1);
-    // component strengths
     const third = isMinor? toPc(root+3): toPc(root+4);
     const fifth = toPc(root+7);
-    const sThird = avg[third]||0;
-    const sFifth = avg[fifth]||0;
     const s2 = avg[toPc(root+2)]||0;
     const s4 = avg[toPc(root+5)]||0;
     const sFlat5 = avg[toPc(root+6)]||0;
     const sMaj3 = avg[toPc(root+4)]||0;
     const sMin3 = avg[toPc(root+3)]||0;
-    const sB7 = avg[toPc(root+10)]||0; // minor seventh
+    const sB7 = avg[toPc(root+10)]||0;
     const sRoot = avg[root]||0;
-
     let label = base;
-
-    // SUS (very conservative): only if 3rd very weak AND sus tone strong
     const thirdWeak = (isMinor? sMin3 : sMaj3) < 0.11;
     const sus2Strong = s2 > 0.22 && s2 > s4*0.9;
     const sus4Strong = s4 > 0.22 && s4 > s2*0.9;
@@ -394,24 +385,19 @@ function decorateQualities(tl, feats, key, mode){
       if(sus4Strong){ label = base.replace(/m$/,'') + 'sus4'; }
       else if(sus2Strong){ label = base.replace(/m$/,'') + 'sus2'; }
     }
-
-    // Dominant 7 (high sensitivity esp. on V): only if strong b7 and context fits
     const deg = degreeOfChord(label, key);
-    const likelyDom = (deg===4); // V degree
-    const b7Strong = (sB7 > 0.20) && (sB7 > sThird*0.75) && (sRoot > 0.12);
+    const likelyDom = (deg===4);
+    const b7Strong = (sB7 > 0.20) && (sB7 > (isMinor? sMin3: sMaj3)*0.75) && (sRoot > 0.12);
     if(!/sus/.test(label) && !/m$/.test(label) && (likelyDom ? (sB7 > 0.17) : b7Strong)){
       label += '7';
     }
-
-    // Diminished / Half-dim (extremely conservative)
-    if(isMinor && sFlat5 > 0.25 && sFifth < 0.10 && sMin3 > 0.14){
+    if(isMinor && sFlat5 > 0.25 && (avg[toPc(root+7)]||0) < 0.10 && sMin3 > 0.14){
       if(deg===1){ label = base.replace(/m$/,'m7b5'); }
     }
     const sSharp5 = avg[toPc(root+8)]||0;
-    if(!isMinor && sSharp5 > 0.28 && sFifth < 0.12 && sMaj3 > 0.16){
+    if(!isMinor && sSharp5 > 0.28 && (avg[toPc(root+7)]||0) < 0.12 && sMaj3 > 0.16){
       label = base.replace(/m$/,'') + 'aug';
     }
-
     out.push({...ev, label});
   }
   return out;
@@ -485,7 +471,6 @@ function hookPlaybackLive(){
     const shown = applyCapoToLabel(ev.label, capo);
     liveChordEl.textContent = shown;
 
-    // append strictly on chord change to never miss a chord
     if(shown!==lastChord){
       const pause = (t-lastChangeSec) > minPauseSec;
       const eNow = energyAt(t, st.energy);
@@ -551,47 +536,36 @@ function percentileLocal(arr, p){ const a=[...arr].filter(x=>Number.isFinite(x))
 
 // ====== END OF 9.4.6 CORE ======
 
-// ========= WHISPER INTEGRATION (AUTO HE/EN) — appended only =========
+// ========= WHISPER‑TINY INTEGRATION (AUTO HE/EN) — appended only =========
 const whisperUI = (()=>{
-  // create small inline status + error below liveSheet, without changing existing layout
   const status = document.createElement('div');
   status.id='whisperStatus';
   status.className='pill warn';
   status.style.display='none';
   status.style.marginTop='6px';
-  liveSheet.parentElement.appendChild(status);
+  liveSheetEl.parentElement.appendChild(status);
 
   const error = document.createElement('div');
   error.id='whisperError';
   error.className='pill err';
   error.style.display='none';
   error.style.marginTop='6px';
-  liveSheet.parentElement.appendChild(error);
+  liveSheetEl.parentElement.appendChild(error);
 
   function show(msg,type='warn'){ status.textContent=msg; status.className='pill ' + (type==='ok'?'ok':(type==='err'?'err':'warn')); status.style.display='inline-flex'; }
   function hide(){ status.style.display='none'; }
   function eShow(msg){ error.textContent=msg; error.style.display='inline-flex'; }
   function eHide(){ error.style.display='none'; }
-
-  return { show, hide, eShow, eHide, status, error };
+  return { show, hide, eShow, eHide };
 })();
 
 async function runWhisperAuto(){
   try{
     whisperUI.eHide(); whisperUI.show('Whisper: טוען מודול…');
-    // dynamic import
     let mod=null;
-    try{
-      mod = await import('./models/whisper-tiny.js');
-    }catch(e){
-      console.error('[Whisper] import failed', e);
-      whisperUI.eShow('טעינת whisper-tiny.js נכשלה — ודא שהקובץ קיים ב /models');
-      return;
-    }
-    if(!mod?.loadWhisper){
-      whisperUI.eShow('loadWhisper לא נמצא במודול Whisper');
-      return;
-    }
+    try{ mod = await import('./models/whisper-tiny.js'); }
+    catch(e){ console.error('[Whisper] import failed', e); whisperUI.eShow('טעינת whisper-tiny.js נכשלה — ודא שהקובץ קיים ב /models'); return; }
+    if(!mod?.loadWhisper){ whisperUI.eShow('loadWhisper לא נמצא במודול Whisper'); return; }
 
     whisperUI.show('Whisper: מאתחל מודל…');
     const instance = await mod.loadWhisper({
@@ -603,16 +577,11 @@ async function runWhisperAuto(){
     if(instance?.init) await instance.init();
 
     const st = window.__STATE;
-    if(!st?.file){
-      whisperUI.eShow('אין קובץ להזנת Whisper');
-      return;
-    }
+    if(!st?.file){ whisperUI.eShow('אין קובץ להזנת Whisper'); return; }
 
     whisperUI.show('Whisper: מתמלל…');
     let accText='';
-    const onPartial=(part)=>{
-      if(part?.text){ accText += part.text; }
-    };
+    const onPartial=(part)=>{ if(part?.text){ accText += part.text; } };
     let result;
     try{
       result = await (instance.transcribe ? instance.transcribe(st.file, onPartial)
@@ -622,16 +591,16 @@ async function runWhisperAuto(){
       whisperUI.eShow('שגיאה בתמלול: '+(e?.message||e));
       return;
     }
+
     const segments = Array.isArray(result?.segments) ? result.segments : [];
     const fullText = (result?.text || accText || '').trim();
+
     if(!fullText && !segments.length){
       whisperUI.eShow('Whisper סיים ללא טקסט');
       return;
     }
 
-    // === שילוב תחת האקורדים בדיוק בתזמון ===
-    // אנו ממפים כל מילה/סגמנט לציר הזמן ומניחים את האקורד הפעיל בשורת כותרת לפני השורה.
-    // הטקסט ישתלב בתוך liveSheet — נוסיף שתי ירידות שורה ואז בלוק "Lyrics:" עם תאום.
+    // Map segments to active chord at their start time and append under #liveSheet
     const capo=parseInt(document.getElementById('capo')?.value||'0',10);
     const tl = st.timeline || [];
     function chordAt(t){
@@ -654,17 +623,15 @@ async function runWhisperAuto(){
         if(words){
           linesOut.push(shownChord);
           linesOut.push(words);
-          linesOut.push(''); // empty line
+          linesOut.push(''); // spacer
         }
       }
     }else{
-      // fallback: no segments, dump full text under the current chord
       const chord = applyCapoToLabel(chordAt(0), capo);
       linesOut.push(chord);
       linesOut.push(fullText);
     }
 
-    // Append under existing liveSheet text
     const existing = liveSheetEl.textContent.trim();
     const injected = (existing ? (existing + '\\n\\n') : '') + linesOut.join('\\n');
     liveSheetEl.textContent = injected;
@@ -675,11 +642,8 @@ async function runWhisperAuto(){
     whisperUI.eShow('קריסה כללית ב-Whisper: '+(err?.message||err));
   }
 
-  // PWA: register service worker
   if('serviceWorker' in navigator){
-    window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('SW failed', e));
-    });
+    window.addEventListener('load', ()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('SW failed', e)));
   }
 }
 </script>

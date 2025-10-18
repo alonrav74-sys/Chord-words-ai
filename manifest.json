@@ -1,11 +1,11 @@
 {
-  "name": "Chord Finder AI — v9.4.9",
+  "name": "Chord Finder AI — v9.4.9 (Whisper‑tiny enabled)",
   "short_name": "ChordFinder",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b1022",
   "theme_color": "#0b1022",
-  "description": "Live chord detection + Whisper transcription (auto he/en) aligned under chords.",
+  "description": "Live chord detection (9.4.6 core) + Whisper‑tiny transcription (auto he/en) aligned under chords.",
   "icons": [
     {
       "src": "icons/icon512.png",

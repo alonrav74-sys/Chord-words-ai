@@ -1,4 +1,4 @@
-const CACHE_NAME = "chordfinder-9-4-9-v1";
+const CACHE_NAME = "chordfinder-9-4-9-tiny-v1";
 const ASSETS = [
   "./",
   "./index.html",
