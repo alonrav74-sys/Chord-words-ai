@@ -1,38 +1,19 @@
-// service-worker.js
-const CACHE='cfai-v946-stable';
-const CORE=[
-  './',
-  './index.html',
-  './manifest.json',
-  './service-worker.js',
-  // שמות ה-Whisper לתמיכה אופציונלית בקאש
-  './models/whisper-tiny.js',
-  './models/whisper-tiny.wasm',
-  './models/whisper-tiny.worker.js',
-  './models/ggml-tiny.bin'
+const CACHE_NAME = "chordfinder-9-4-8-v1";
+const ASSETS = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icons/icon512.png",
+  "./models/whisper-tiny.js",
+  "./models/whisper-tiny.wasm",
+  "./models/whisper-tiny.worker.js"
 ];
-
-self.addEventListener('install', e=>{
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})));
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((c)=>c.addAll(ASSETS)));
 });
-
-self.addEventListener('activate', e=>{
-  e.waitUntil((async()=>{
-    const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
-    await self.clients.claim();
-  })());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(caches.keys().then((ks)=>Promise.all(ks.map(k=>k!==CACHE_NAME?caches.delete(k):null))));
 });
-
-self.addEventListener('fetch', e=>{
-  e.respondWith((async()=>{
-    const cached = await caches.match(e.request);
-    try{
-      const fresh = await fetch(e.request);
-      return fresh;
-    }catch(_){
-      return cached || Promise.reject(_);
-    }
-  })());
+self.addEventListener("fetch", (event) => {
+  event.respondWith(caches.match(event.request).then(c=>c || fetch(event.request)));
 });
