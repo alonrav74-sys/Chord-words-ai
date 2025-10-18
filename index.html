@@ -38,7 +38,7 @@
 <body>
   <div class="wrap">
     <h1>🎵 Chord Finder AI — v9.4.6 (Harmonic Live Sheet) <span class="mutedSmall">• harmonic+pause + cautious 7/sus</span></h1>
-    <div class="muted">מנוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • בלי דף סטטי • כותב משמאל לימין, עד 7 אקורדים בשורה.</div>
+    <div class="muted">mnוע 9.x מקורי • דף חי חכם לפי פונקציות הרמוניות + אתנחתות + בקרת רגישות ל‑7/sus • בלי דף סטטי • כותב משמאל לימין, עד 7 אקורדים בשורה.</div>
 
     <section class="panel">
       <div class="row">
@@ -89,7 +89,7 @@
       <div class="row" style="margin-top:8px">
         <button id="resetSheet">אפס דף חי</button>
       </div>
-      <!-- תוספת: בלוק מילים + אקורדים (מופיע רק אם יש Whisper) -->
+      <!-- בלוק מילים + אקורדים (מופיע רק אם יש Whisper) -->
       <div id="lyricsBlock" style="display:none; margin-top:8px">
         <h3 style="margin:8px 0 4px; font-size:16px; color:#cbd5e1;">🎤 מילים + אקורדים</h3>
         <div id="lyricsSheet" class="mono">—</div>
@@ -112,7 +112,6 @@ const quantEl=document.getElementById('quant'); const deepEl=document.getElement
 const capoEl=document.getElementById('capo'); const tonicBadge=document.getElementById('tonicBadge'); const keyBadge=document.getElementById('keyBadge');
 const liveChordEl=document.getElementById('liveChord'); const liveSheetEl=document.getElementById('liveSheet');
 const resetSheetBtn=document.getElementById('resetSheet'); const aiBadge=document.getElementById('aiBadge');
-// תוספת ל-Whisper
 const lyricsBlock=document.getElementById('lyricsBlock'); const lyricsSheet=document.getElementById('lyricsSheet');
 
 function showAnalyzing(stepText){ statusEl.innerHTML='<span class="spin"></span> '+stepText; statusEl.className='pill warn'; statusEl.style.display='inline-flex'; }
@@ -156,23 +155,23 @@ analyzeBtn.onclick=async()=>{
   const f=fileEl.files?.[0]; if(!f){ err('בחר קובץ אודיו/וידאו'); return; }
   try{
     const deep=deepEl.checked;
-    showAnalyzing('מנתח… שלב 1/4: טעינת אודיו');
+    showAnalyzing('mnתח… שלב 1/4: טעינת אודיו');
     if(deep){ prog.value=8; prog.style.display='block'; progTxt.textContent='טעינה…'; }
     const st1 = await decodeAudio(f);
     bpmEl.textContent = st1.bpm; durEl.textContent = st1.duration.toFixed(1)+'s';
     const url = URL.createObjectURL(f); player.src=url;
 
-    showAnalyzing('מנתח… שלב 2/4: מיצוי כרומה/בס');
+    showAnalyzing('mnתח… שלב 2/4: מיצוי כרומה/בס');
     if(deep){ prog.value=28; progTxt.textContent='מיצוי כרומה ובס…'; }
     const feats = extractFeatures(st1);
 
-    showAnalyzing('מנתח… שלב 3/4: סולם (Krumhansl) + HMM');
+    showAnalyzing('mnתח… שלב 3/4: סולם (Krumhansl) + HMM');
     if(deep){ prog.value=60; progTxt.textContent='חישוב סולם…'; }
     const key = estimateKeyKrumhansl(feats, deep, st1.duration);
     if(deep){ prog.value=75; progTxt.textContent='החלקת אקורדים (HMM)…'; }
     const timeline = chordTrackingWithHMM(feats, key);
 
-    showAnalyzing('מנתח… שלב 4/4: ניקוי וזמני הצגה');
+    showAnalyzing('mnתח… שלב 4/4: ניקוי וזmnי הצגה');
     if(deep){ prog.value=92; progTxt.textContent='Min-דuration, Grid ושמירת קישוטי 7/Bass…'; }
     const finalTL = finalizeTimeline(timeline, key, st1.bpm, feats);
 
@@ -194,8 +193,8 @@ analyzeBtn.onclick=async()=>{
     if(deep){ prog.value=100; progTxt.textContent='מוכן'; }
     hookPlaybackLive(); playBtn.disabled=false; aiBadge.style.display='inline-flex';
 
-    // === תוספת יחידה: תמלול Whisper (לא משנה שום דבר אחר) ===
-    maybeRunWhisper(f, decoratedTL, capo).catch(()=>{});
+    // === תמלול Whisper מקומי (he/en) — עם שורת סטטוס ===
+    await runWhisperAndRender(f, decoratedTL, capo);
   }catch(e){ console.error(e); err('הדפדפן לא הצליח לפענח/לנתח. נסה MP3/WAV או דפדפן אחר.'); }
 };
 
@@ -323,11 +322,11 @@ function chordTrackingWithHMM(feats, key){
   let cur=states[0], start=0;
   for(let i=1;i<M;i++){
     if(states[i]!==cur){
-      tl.push({t:start*secPerHop, label:candidates[cur].label, fi:start});
+      tl.push({t:start*secPerHop, label=candidates[cur].label, fi:start});
       cur=states[i]; start=i;
     }
   }
-  tl.push({t:start*secPerHop, label:candidates[cur].label, fi:start});
+  tl.push({t:start*secPerHop, label=candidates[cur].label, fi:start});
   return tl;
 }
 
@@ -346,7 +345,7 @@ function finalizeTimeline(tl, key, bpm, feats){
         const prev=out[out.length-1];
         const r=parseRoot(a.label), pr=parseRoot(prev.label);
         const inA=inKey(r, key.root, key.minor), inP=inKey(pr, key.root, key.minor);
-        if(!inA || inP){ continue; }
+        if(!inA או inP){ continue; }
       }
     }
     out.push(a);
@@ -446,10 +445,10 @@ function normalize01(arr){
   let mn=Infinity,mx=-Infinity;
   for(const v of arr){ if(Number.isFinite(v)){ if(v<mn) mn=v; if(v>mx) mx=v; } }
   const d=(mx-mn)||1;
-  return arr.map(v=> (v-mn)/d );
+  return arr.map(v=> (v-mנ)/d );
 }
 
-// ===== Live playback: harmonic + pause lines =====
+// ===== Live playback =====
 function hookPlaybackLive(){
   const st=window.__STATE; if(!st) return;
   const capo=parseInt(capoEl.value||'0',10);
@@ -479,7 +478,6 @@ function hookPlaybackLive(){
       const eNow = energyAt(t, st.energy);
       const ePrev = energyAt(Math.max(0,t-0.4), st.energy);
       const energyDrop = (ePrev>0.25 && (eNow < ePrev*0.55));
-
       const cadenceBreak = lastChord ? isCadence(lastChord, shown, st.key) : false;
       const sdToDom = lastChord ? isSubdominantToDominant(lastChord, shown, st.key) : false;
 
@@ -537,29 +535,24 @@ function mixStereo(buf){ const a=buf.getChannelData(0), b=(buf.numberOfChannels>
 function resampleLinear(x,sr,target){ const r=target/sr, L=Math.floor(x.length*r), y=new Float32Array(L); for(let i=0;i<L;i++){ const t=i/r, i0=Math.floor(t), i1=Math.min(x.length-1,i0+1), a=t-i0; y[i]=x[i0]*(1-a)+x[i1]*a; } return y; }
 function percentileLocal(arr, p){ const a=[...arr].filter(x=>Number.isFinite(x)).sort((x,y)=>x-y); if(!a.length) return 0; const i=Math.floor((p/100)*(a.length-1)); return a[i]; }
 
-// ===== Whisper minimal integration =====
-function loadWhisperTiny(){
-  return new Promise((resolve)=>{
-    if(window.WhisperTiny){ resolve(window.WhisperTiny); return; }
-    const s=document.createElement('script');
-    s.src='./models/whisper-tiny.js';
-    s.onload=()=>resolve(window.WhisperTiny||null);
-    s.onerror=()=>resolve(null);
-    document.head.appendChild(s);
-  });
-}
-
-async function maybeRunWhisper(file, timeline, capo){
+// ===== Whisper integration (local, he/en) =====
+async function runWhisperAndRender(file, timeline, capo){
   try{
-    const api = await loadWhisperTiny();
-    if(!api || !api.init){ return; }
-    const inst = await api.init('./models/ggml-tiny.bin');
-    if(!inst || !inst.transcribe){ return; }
-    showAnalyzing('מנתח מילים (Whisper)…');
-    const result = await inst.transcribe(file);
+    showAnalyzing('מתמלל... (Whisper מקומי)');
+    // נטען את mnוע ה-Whisper המקומי
+    const api = await import('./models/whisper-tiny.js').catch(()=>null);
+    if(!api || !api.loadWhisper){ ok('הניתוח הושלם ✓'); return; }
+    const inst = await api.loadWhisper('./models/ggml-tiny.bin');
+    // נקריא את התוכן הגולמי (כדי להעביר לאינפרנס)
+    const buff = await file.arrayBuffer();
+    const result = await api.transcribe(inst, buff); // צפוי להחזיר {text, segments:[{start,end,text}]}
+    if(!result) { ok('הניתוח הושלם ✓'); return; }
     renderLyricsWithChords(result, timeline, capo);
     ok('תמלול הושלם ✓ — הוצגו מילים + אקורדים');
-  }catch(e){ console.warn('Whisper unavailable:', e); }
+  }catch(e){
+    console.warn('Whisper local failed:', e);
+    ok('הניתוח הושלם ✓ (ללא תמלול)');
+  }
 }
 
 function renderLyricsWithChords(transcript, timeline, capo){
