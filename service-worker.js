@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE='cfai-v946-whisper-debug';
+const CACHE='cfai-v946-whisper-debug-logs';
 const CORE=['./','./index.html','./manifest.json','./service-worker.js',
   './models/whisper-tiny.js','./models/whisper-tiny.wasm','./models/whisper-tiny.worker.js','./models/ggml-tiny.bin'
 ];

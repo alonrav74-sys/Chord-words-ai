@@ -89,13 +89,6 @@
       <div class="row" style="margin-top:8px">
         <button id="resetSheet">אפס דף חי</button>
       </div>
-      <!-- בלוק מילים + אקורדים (מופיע רק אם יש Whisper) -->
-      <div id="lyricsBlock" style="display:none; margin-top:8px">
-        <h3 style="margin:8px 0 4px; font-size:16px; color:#cbd5e1;">🎤 מילים + אקורדים</h3>
-        <div id="lyricsSheet" class="mono">—</div>
-      </div>
-      <!-- בלוק שגיאת תמלול ברור -->
-      <div id="whisperError" class="pill err" style="display:none"></div>
     </section>
   </div>
 
@@ -114,14 +107,11 @@ const quantEl=document.getElementById('quant'); const deepEl=document.getElement
 const capoEl=document.getElementById('capo'); const tonicBadge=document.getElementById('tonicBadge'); const keyBadge=document.getElementById('keyBadge');
 const liveChordEl=document.getElementById('liveChord'); const liveSheetEl=document.getElementById('liveSheet');
 const resetSheetBtn=document.getElementById('resetSheet'); const aiBadge=document.getElementById('aiBadge');
-const lyricsBlock=document.getElementById('lyricsBlock'); const lyricsSheet=document.getElementById('lyricsSheet');
-const whisperErr=document.getElementById('whisperError');
 
-function showAnalyzing(stepText){ statusEl.innerHTML='<span class="spin"></span> '+stepText; statusEl.className='pill warn'; statusEl.style.display='inline-flex'; }
-function ok(msg){ statusEl.textContent=msg; statusEl.className='pill ok'; statusEl.style.display='inline-flex'; }
-function err(msg){ errorEl.textContent=msg; errorEl.style.display='inline-flex'; }
-function hideAlerts(){ statusEl.style.display='none'; errorEl.style.display='none'; prog.style.display='none'; progTxt.textContent=''; gateChip.style.display='none'; whisperErr.style.display='none'; whisperErr.textContent=''; }
-function whisperErrorShow(msg){ whisperErr.textContent='⚠️ שגיאה בתמלול (Whisper): '+msg; whisperErr.style.display='inline-flex'; console.warn('Whisper error:', msg); }
+function showAnalyzing(stepText){ console.log('[STATUS]', stepText); statusEl.innerHTML='<span class="spin"></span> '+stepText; statusEl.className='pill warn'; statusEl.style.display='inline-flex'; }
+function ok(msg){ console.log('[OK]', msg); statusEl.textContent=msg; statusEl.className='pill ok'; statusEl.style.display='inline-flex'; }
+function err(msg){ console.error('[ERROR]', msg); errorEl.textContent=msg; errorEl.style.display='inline-flex'; }
+function hideAlerts(){ statusEl.style.display='none'; errorEl.style.display='none'; prog.style.display='none'; progTxt.textContent=''; gateChip.style.display='none'; }
 
 // ===== Musical helpers =====
 const NOTES_SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -155,7 +145,6 @@ function inKey(pc, keyRoot, minor){ const sc = minor? MINOR_SCALE: MAJOR_SCALE; 
 analyzeBtn.onclick=async()=>{
   hideAlerts(); aiBadge.style.display='none';
   liveChordEl.textContent='—'; liveSheetEl.textContent='—'; playBtn.disabled=true; tonicBadge.textContent='—'; keyBadge.textContent='—';
-  lyricsBlock.style.display='none'; lyricsSheet.textContent='—';
   const f=fileEl.files?.[0]; if(!f){ err('בחר קובץ אודיו/וידאו'); return; }
   try{
     const deep=deepEl.checked;
@@ -185,7 +174,6 @@ analyzeBtn.onclick=async()=>{
     const energyTimes = feats.frameE.map((_,i)=> i*(feats.hop/feats.sr));
     const energyVals = normalize01(feats.frameE);
 
-    // decorate qualities (cautious 7/sus/dim/aug) using chroma+bass context
     const mode = document.getElementById('extMode').value;
     const decoratedTL = decorateQualities(finalTL, feats, key, mode);
 
@@ -197,8 +185,8 @@ analyzeBtn.onclick=async()=>{
     if(deep){ prog.value=100; progTxt.textContent='מוכן'; }
     hookPlaybackLive(); playBtn.disabled=false; aiBadge.style.display='inline-flex';
 
-    // === תמלול Whisper מקומי (he/en) — עם הודעת סטטוס ושגיאה ברורה ===
-    await runWhisperAndRender(f, decoratedTL, capo);
+    // === Whisper Transcription Integration (after analysis) ===
+    await runWhisperDebug(f);
   }catch(e){ console.error(e); err('הדפדפן לא הצליח לפענח/לנתח. נסה MP3/WAV או דפדפן אחר.'); }
 };
 
@@ -223,7 +211,7 @@ function extractFeatures(st1){
   const hann=new Float32Array(win); for(let i=0;i<win;i++) hann[i]=0.5*(1-Math.cos(2*Math.PI*i/(win-1)));
   const frames=[]; for(let s=0; s+win<=x.length; s+=hop) frames.push(x.subarray(s,s+win));
   function fft(input){ let n=input.length,N=1; while(N<n)N<<=1; const re=new Float32Array(N),im=new Float32Array(N); re.set(input);
-    let j=0; for(let i=0;i<N;i++){ if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } let m=N>>1; while(m>=1&&j>=מ){ j-=m; m>>=1; } j+=m; }
+    let j=0; for(let i=0;i<N;i++){ if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } let m=N>>1; while(m>=1&&j>=m){ j-=m; m>>=1; } j+=m; }
     for(let len=2; len<=N; len<<=1){ const ang=-2*Math.PI/len, wlr=Math.cos(ang), wli=Math.sin(ang);
       for(let i=0;i<N;i+=len){ let wr=1, wi=0;
         for(let k=0;k<(len>>1);k++){
@@ -231,7 +219,7 @@ function extractFeatures(st1){
           const vr=re[i+k+(len>>1)]*wr - im[i+k+(len>>1)]*wi;
           const vi=re[i+k+(len>>1)]*wi + im[i+k+(len>>1)]*wr;
           re[i+k]=ur+vr; im[i+k]=ui+vi;
-          re[i+k+(len>>1)]=ur-вр; im[i+k+(len>>1)]=ui-ви;
+          re[i+k+(len>>1)]=ur-vr; im[i+k+(len>>1)]=ui-vi;
           const nwr=wr*wlr - wi*wli; wi=wr*wli + wi*wlr; wr=nwr;
         }
       }
@@ -247,7 +235,7 @@ function extractFeatures(st1){
     let en=0; for(let b=1;b<mags.length;b++){ en+=mags[b]; }
     frameE.push(en);
     const c=new Float32Array(12); let e=0;
-    for(let b=1;b<mags.length;b++){ const f=hz(b,N); if(f<80||f>5000) continue; const midi=69+12*Math.log2(f/440); const pc=toPc(Math.round(midi)); c[pc]+=mags[b]; e+=mags[b]; }
+    for(let b=1;b<mags.length;b++){ const f=hz(b,N); if(f<80||f>5000) continue; const midi=69+12*Math.log2(f/440); const pc=toPc(Math.round(midi)); c[pc]+=mags[b]; e+=מags[b]; }
     if(e>0){ let s=0; for(let k=0;k<12;k++) s+=c[k]; for(let k=0;k<12;k++) c[k]/=s; }
     chroma.push(c);
     // bass
@@ -255,7 +243,7 @@ function extractFeatures(st1){
     for(let b=1;b<mags.length;b++){
       const f=hz(b,N); if(f<40)continue; if(f>250)break;
       const v=mags[b], b2=Math.round(b*2), b3=Math.round(b*3);
-      const score = v + (mags[b2]||0)*0.6 + (mags[b3]||0)*0.4;
+      const score = v + (mags[b2]||0)*0.6 + (מags[b3]||0)*0.4;
       if(score>best){ best=score; bestHz=f; }
     }
     const pc = bestHz>0 ? toPc(Math.round(69+12*Math.log2(bestHz/440))) : -1;
@@ -335,11 +323,11 @@ function chordTrackingWithHMM(feats, key){
 }
 
 function finalizeTimeline(tl, key, bpm, feats){
-  const spb=60/Math.max(60,Math.min(200,bpm||120));
-  const minDur=Math.max(0.5, 0.45*spb);
+  const spב=60/Math.max(60,Math.min(200,bpm||120));
+  const minDur=Math.max(0.5, 0.45*spב);
   const out=[];
   for(let i=0;i<tl.length;i++){
-    const a=tl[i]; const b=tl[i+1]; const dur=(b?b.t: a.t+4*spb) - a.t;
+    const a=tl[i]; const b=tl[i+1]; const dur=(b?b.t: a.t+4*spב) - a.t;
     if(dur<minDur && out.length){
       const fiA=a.fi, fiB=(b?b.fi:fiA+1);
       const bpA = feats.bassPc[fiA] ?? -1;
@@ -356,7 +344,7 @@ function finalizeTimeline(tl, key, bpm, feats){
   }
   const snapped=[];
   for(const ev of out){
-    const q=Math.max(0, Math.round(ev.t/spb)*spb);
+    const q=Math.max(0, Math.round(ev.t/spב)*spב);
     if(!snapped.length || snapped.at(-1).label!==ev.label){
       snapped.push({t:q, label:ev.label, fi:ev.fi});
     }
@@ -382,7 +370,6 @@ function decorateQualities(tl, feats, key, mode){
     const sFifth = avg[fifth]||0;
     const s2 = avg[toPc(root+2)]||0;
     const s4 = avg[toPc(root+5)]||0;
-    const sFlat5 = avg[toPc(root+6)]||0;
     const sMaj3 = avg[toPc(root+4)]||0;
     const sMin3 = avg[toPc(root+3)]||0;
     const sB7 = avg[toPc(root+10)]||0;
@@ -449,15 +436,15 @@ function normalize01(arr){
   let mn=Infinity,mx=-Infinity;
   for(const v of arr){ if(Number.isFinite(v)){ if(v<mn) mn=v; if(v>mx) mx=v; } }
   const d=(mx-mn)||1;
-  return arr.map(v=> (v-mn)/d );
+  return arr.map(v=> (v-mנ)/d );
 }
 
-// ===== Live playback =====
+// ===== Live playback: harmonic + pause lines (max 7 chords per line) =====
 function hookPlaybackLive(){
   const st=window.__STATE; if(!st) return;
   const capo=parseInt(capoEl.value||'0',10);
   const spb=60/(st.bpm||120);
-  const minPauseSec=Math.max(1.0, 1.75*spב);
+  const minPauseSec=Math.max(1.0, 1.75*spb);
   const maxPerLine=7;
 
   let lines=[]; let currentLine=[]; 
@@ -528,7 +515,7 @@ function detectStartGate(feats){
       let mx=0; for(let k=0;k<12;k++) mx=Math.max(mx, chroma[i][k]||0);
       chromaPeak = mx>0.18;
     }
-    if((strong או hasBass) && chromaPeak){ run++; if(run>=needStable) return i-needStable+1; }
+    if((strong || hasBass) && chromaPeak){ run++; if(run>=needStable) return i-needStable+1; }
     else run=0;
   }
   return 0;
@@ -536,115 +523,66 @@ function detectStartGate(feats){
 
 // ===== Utils =====
 function mixStereo(buf){ const a=buf.getChannelData(0), b=(buf.numberOfChannels>1?buf.getChannelData(1):a); const m=new Float32Array(buf.length); for(let i=0;i<buf.length;i++) m[i]=(a[i]+b[i])*0.5; return m; }
-function resampleLinear(x,sר,target){ const r=target/sר, L=Math.floor(x.length*r), y=new Float32Array(L); for(let i=0;i<L;i++){ const t=i/r, i0=Math.floor(t), i1=Math.min(x.length-1,i0+1), a=t-i0; y[i]=x[i0]*(1-a)+x[i1]*a; } return y; }
+function resampleLinear(x,sr,target){ const r=target/sr, L=Math.floor(x.length*r), y=new Float32Array(L); for(let i=0;i<L;i++){ const t=i/r, i0=Math.floor(t), i1=Math.min(x.length-1,i0+1), a=t-i0; y[i]=x[i0]*(1-a)+x[i1]*a; } return y; }
 function percentileLocal(arr, p){ const a=[...arr].filter(x=>Number.isFinite(x)).sort((x,y)=>x-y); if(!a.length) return 0; const i=Math.floor((p/100)*(a.length-1)); return a[i]; }
 
-// ===== Whisper integration (local) + rich errors =====
-async function runWhisperAndRender(file, timeline, capo){
+// ===== Whisper debug (local) =====
+async function runWhisperDebug(file){
+  console.log('[WHISPER] start');
   try{
-    showAnalyzing('מתמלל... (Whisper מקומי)');
-    // בדיקת קיום קבצים לפני import
+    showAnalyzing('🎤 מתמלל (Whisper מקומי — זיהוי שפה אוטומטי)…');
     const base = './models/';
     const needed = ['whisper-tiny.js','whisper-tiny.wasm','whisper-tiny.worker.js','ggml-tiny.bin'];
     for (const n of needed){
-      try{ await fetch(base+n,{method:'HEAD'}); }catch(_){ whisperErrorShow(`לא נמצא ${n} בתיקייה models/`); ok('הניתוח הושלם ✓ (ללא תמלול)'); return; }
+      try{
+        const r = await fetch(base+n,{method:'HEAD'});
+        console.log('[WHISPER] HEAD', n, r.status);
+        if(!r.ok) throw new Error('HTTP '+r.status);
+      }catch(_){
+        err('⚠️ Whisper Error: לא נמצא '+n+' בתיקייה models/');
+        return;
+      }
     }
-
-    // טעינת המודול
     let api=null;
     try{
       api = await import('./models/whisper-tiny.js');
+      console.log('[WHISPER] module imported');
     }catch(e){
       if (location.protocol === 'file:'){
-        whisperErrorShow('ייבוא מודול נחסם תחת file:// — יש לפתוח דרך שרת מקומי (למשל http://localhost).');
+        err('⚠️ Whisper Error: import נחסם תחת file:// — יש לפתוח דרך שרת מקומי (http://localhost)');
       }else{
-        whisperErrorShow('כשל בטעינת whisper-tiny.js: '+(e?.message||e));
+        err('⚠️ Whisper Error: כשל בטעינת whisper-tiny.js: '+(e?.message||e));
       }
-      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+      return;
     }
     if(!api?.loadWhisper || !api?.transcribe){
-      whisperErrorShow('whisper-tiny.js נטען אך הפונקציות loadWhisper/transcribe לא קיימות.');
-      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+      err('⚠️ Whisper Error: whisper-tiny.js נטען אך הפונקציות loadWhisper/transcribe לא קיימות');
+      return;
     }
-
-    // אתחול מנוע + תמלול
     let inst=null;
     try{
       inst = await api.loadWhisper('./models/ggml-tiny.bin');
+      console.log('[WHISPER] engine loaded');
     }catch(e){
-      whisperErrorShow('כשל באתחול המנוע מול ggml-tiny.bin: '+(e?.message||e));
-      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+      err('⚠️ Whisper Error: כשל באתחול ggml-tiny.bin: '+(e?.message||e));
+      return;
     }
-
     let ab=null;
-    try{ ab = await file.arrayBuffer(); }
-    catch(e){ whisperErrorShow('כשל בקריאת הקובץ לתמלול: '+(e?.message||e)); ok('הניתוח הושלם ✓ (ללא תמלול)'); return; }
-
+    try{ ab = await file.arrayBuffer(); console.log('[WHISPER] file to arrayBuffer', ab.byteLength,'bytes'); }
+    catch(e){ err('⚠️ Whisper Error: כשל בקריאת הקובץ לתמלול: '+(e?.message||e)); return; }
     let result=null;
     try{
-      result = await api.transcribe(inst, ab);
+      result = await api.transcribe(inst, ab, { language: 'auto' });
+      console.log('[WHISPER] transcribed. text length:', (result?.text||'').length);
     }catch(e){
-      whisperErrorShow('כשל בהרצת התמלול: '+(e?.message||e));
-      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
+      err('⚠️ Whisper Error: כשל בהרצת התמלול: '+(e?.message||e));
+      return;
     }
-
-    if(!result || (!result.text && !Array.isArray(result.segments))){
-      whisperErrorShow('התמלול החזיר מבנה ריק או לא תקין.');
-      ok('הניתוח הושלם ✓ (ללא תמלול)'); return;
-    }
-
-    renderLyricsWithChords(result, timeline, capo);
-    ok('תמלול הושלם ✓ — הוצגו מילים + אקורדים');
+    ok('תמלול הושלם ✓ — (ראה קונסול לטקסט מלא)');
+    console.log('[WHISPER] TEXT:', result?.text);
   }catch(e){
-    whisperErrorShow('שגיאה לא צפויה: '+(e?.message||e));
-    ok('הניתוח הושלם ✓ (ללא תמלול)');
+    err('⚠️ Whisper Error: שגיאה לא צפויה: '+(e?.message||e));
   }
-}
-
-function renderLyricsWithChords(transcript, timeline, capo){
-  if(!transcript){ return; }
-  const segs = Array.isArray(transcript.segments)? transcript.segments : [];
-  const text = transcript.text || '';
-  if(!segs.length && !text){ return; }
-  const segments = segs.length ? segs : text.split(/\r?\n+/).map((t,i)=>({start:i*2, end:i*2+2, text:t}));
-
-  const words=[];
-  for(const s of segments){
-    const toks=(s.text||'').split(/\s+/).filter(Boolean);
-    let t=s.start||0; const dt = Math.max(0.25, ((s.end||t+2)-t)/Math.max(1,toks.length));
-    for(const w of toks){ words.push({t, w}); t+=dt; }
-  }
-  // הצמדת אקורד קרוב לכל מילה על בסיס timeline
-  let wi=0;
-  for(let i=0;i<timeline.length;i++){
-    const ch=applyCapoToLabel(timeline[i].label, capo||0);
-    const t=timeline[i].t;
-    while(wi<words.length-1 && words[wi].t < t) wi++;
-    if(words[wi]) words[wi].ch=ch;
-  }
-
-  // רינדור
-  const container=document.createElement('div');
-  for(const s of segments){
-    const line=document.createElement('div'); line.style.margin='2px 0';
-    const lineWords=words.filter(w=>w.t>=s.start && w.t<=s.end);
-    for(const w of lineWords){
-      const span=document.createElement('span');
-      span.style.display='inline-block'; span.style.position='relative'; span.style.margin='0 4px';
-      span.textContent=w.w+' ';
-      if(w.ch){
-        const ch=document.createElement('div');
-        ch.textContent=w.ch;
-        ch.style.position='absolute'; ch.style.left='0'; ch.style.right='0'; ch.style.top='-1.2em'; ch.style.textAlign='center';
-        ch.style.fontWeight='800'; ch.style.color='var(--accent)';
-        span.appendChild(ch);
-      }
-      line.appendChild(span);
-    }
-    container.appendChild(line);
-  }
-  lyricsSheet.innerHTML=''; lyricsSheet.appendChild(container);
-  lyricsBlock.style.display='block';
 }
 </script>
 </body>
