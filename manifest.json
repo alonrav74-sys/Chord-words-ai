@@ -1,8 +1,0 @@
-{
-  "name": "Chord Finder AI",
-  "short_name": "ChordFinder",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#0b1022",
-  "theme_color": "#0b1022"
-}
