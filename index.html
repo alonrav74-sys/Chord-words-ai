@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎧 YouTube Audio Loader (CORS Fallback)</title>
+<style>
+body{background:#0b1022;color:#e5e7eb;font-family:system-ui;padding:20px;text-align:center}
+h1{font-size:22px;margin-bottom:10px}
+input,button{padding:10px 14px;border-radius:8px;border:1px solid #223;background:#0f172a;color:#e5e7eb;font-weight:600}
+button{cursor:pointer}
+.err{background:#3f1d1d;color:#ffbaba;padding:8px;border-radius:8px}
+.ok{background:#0d2e1f;color:#d7ffe6;padding:8px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<h1>🔊 טעינה מיוטיוב עם חילוץ אודיו</h1>
+
+<input id="ytUrl" placeholder="הדבק קישור YouTube מלא או מקוצר..." style="width:75%">
+<button id="loadBtn">🎧 חלץ אודיו</button>
+<div id="status" style="margin-top:12px"></div>
+<audio id="player" controls style="width:100%;margin-top:20px"></audio>
+
+<script type="module">
+const ytUrl=document.getElementById('ytUrl');
+const loadBtn=document.getElementById('loadBtn');
+const status=document.getElementById('status');
+const player=document.getElementById('player');
+
+const PROXIES = [
+  q => `https://api.allorigins.win/raw?url=${encodeURIComponent(q)}`,
+  q => `https://corsproxy.io/?${encodeURIComponent(q)}`
+];
+
+const PIPED = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.syncpundit.io',
+  'https://pipedapi.moomoo.me'
+];
+
+function extractVideoId(url){
+  url = url.trim();
+  if(url.includes('youtu.be/')){
+    return url.split('youtu.be/')[1].split('?')[0];
+  }
+  if(url.includes('v=')){
+    return url.split('v=')[1].split('&')[0];
+  }
+  return url.split('/').pop();
+}
+
+async function getJsonThroughProxy(urls, target) {
+  for (const makeUrl of urls) {
+    try {
+      const res = await fetch(makeUrl(target));
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('❌ proxy failed', makeUrl);
+    }
+  }
+  throw new Error('לא ניתן למשוך דרך proxy');
+}
+
+loadBtn.onclick = async ()=>{
+  const full = ytUrl.value.trim();
+  if(!full){ status.innerHTML='<div class="err">הדבק קישור תחילה</div>'; return; }
+  const vid = extractVideoId(full);
+  status.innerHTML='<div>⏳ מוריד מידע מיוטיוב...</div>';
+  try {
+    const target = `${PIPED[0]}/streams/${vid}`;
+    const info = await getJsonThroughProxy(PROXIES, target);
+    const audioStream = info?.audioStreams?.find(s=>s.mimeType?.includes('audio/mp4'))?.url;
+    if(!audioStream) throw new Error('לא נמצא סטרים אודיו');
+    player.src = audioStream;
+    await player.play();
+    status.innerHTML='<div class="ok">✅ נמצא סטרים אודיו ונוגן בהצלחה!</div>';
+  } catch(err){
+    console.error(err);
+    status.innerHTML='<div class="err">❌ שגיאה בשליפת סטרים אודיו</div>';
+  }
+};
+</script>
+</body>
+</html>
