@@ -1,1 +1,0 @@
-self.onmessage=(e)=>postMessage({type:'ready'})
