@@ -317,7 +317,7 @@ async function runWhisperInBackground() {
     // Send to server (server forwards to Replica)
     console.log('📤 Uploading to server...');
     
-    const r = await fetch(`${SERVER}/api/whisper-upload`, {
+    const r = await fetch(`${SERVER}/api/whisper-transcribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ audio: base64Audio })
@@ -685,7 +685,13 @@ analyzeBtn.onclick=async()=>{
     
     // ⭐ Start Whisper (uses saved blob)
     if(currentTab === 'youtube' && window.__AUDIO_BLOB) {
+      console.log('🎯 Starting Whisper background process');
       runWhisperInBackground();
+    } else {
+      console.warn('⚠️ Whisper not starting:', {
+        currentTab: currentTab,
+        hasBlob: !!window.__AUDIO_BLOB
+      });
     }
   }catch(e){ 
     console.error(e); 
@@ -743,6 +749,7 @@ async function decodeYouTubeAudio(video){
     
     // ⭐ Save for Whisper!
     window.__AUDIO_BLOB = audioBlob;
+    console.log('💾 Saved audio blob for Whisper, size:', audioBlob.size);
     
     const file = new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' });
     
