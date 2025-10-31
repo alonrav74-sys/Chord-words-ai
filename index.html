@@ -52,10 +52,10 @@
 
   <audio id="player" controls style="width: 100%; margin-top: 10px;"></audio>
 
-  <!-- Load modules in order -->
+  <!-- Load modules in order: BASE → ENGINE → PRO -->
   <script src="chord-engine-base.js"></script>
-  <script src="chord-engine-v3.js"></script>
-  <script src="chord-engine-pro-v3.js"></script>
+  <script src="chord-engine.js"></script>
+  <script src="chord-engine-pro.js"></script>
 
   <script>
     const fileInput = document.getElementById('fileInput');
