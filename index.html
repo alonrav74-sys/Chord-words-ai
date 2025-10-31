@@ -3,329 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Whisper Test - בדיקת תמלול</title>
+  <title>ChordFinder Pro v3.0 - Test</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .container {
-      background: white;
-      border-radius: 20px;
-      padding: 40px;
-      max-width: 600px;
-      width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    h1 {
-      color: #667eea;
-      margin-bottom: 30px;
-      text-align: center;
-      font-size: 28px;
-    }
-    .upload-area {
-      border: 3px dashed #667eea;
-      border-radius: 15px;
-      padding: 40px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-bottom: 20px;
-    }
-    .upload-area:hover {
-      background: #f8f9ff;
-      border-color: #764ba2;
-    }
-    .upload-area.dragover {
-      background: #f0f3ff;
-      border-color: #764ba2;
-    }
-    input[type="file"] {
-      display: none;
-    }
-    .upload-icon {
-      font-size: 48px;
-      margin-bottom: 10px;
-    }
-    .btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 15px 40px;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;
-      transition: transform 0.2s;
-    }
-    .btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-    }
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .status {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 10px;
-      text-align: center;
-      font-weight: bold;
-    }
-    .status.info {
-      background: #e3f2fd;
-      color: #1976d2;
-    }
-    .status.success {
-      background: #e8f5e9;
-      color: #388e3c;
-    }
-    .status.error {
-      background: #ffebee;
-      color: #d32f2f;
-    }
-    .debug {
-      margin-top: 20px;
-      padding: 15px;
-      background: #263238;
-      color: #aed581;
-      border-radius: 10px;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      max-height: 400px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-      direction: ltr;
-      text-align: left;
-    }
-    .result {
-      margin-top: 20px;
-      padding: 20px;
-      background: #f5f5f5;
-      border-radius: 10px;
-      direction: ltr;
-      text-align: left;
-    }
-    .result h3 {
-      color: #667eea;
-      margin-bottom: 10px;
-    }
-    .file-info {
-      background: #f0f3ff;
-      padding: 10px;
-      border-radius: 8px;
-      margin-top: 10px;
-      font-size: 14px;
-    }
-    .spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #667eea;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    body { font-family: Arial; padding: 20px; background: #0b1022; color: #fff; }
+    .panel { background: #1a1a2e; padding: 20px; margin: 10px 0; border-radius: 8px; }
+    button { padding: 10px 20px; margin: 5px; background: #22c55e; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chord { font-size: 48px; font-weight: bold; color: #22c55e; }
+    .timeline { font-family: monospace; white-space: pre; background: #0a0a0a; padding: 10px; border-radius: 6px; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🎤 בדיקת Whisper - תמלול אודיו</h1>
-    
-    <div class="upload-area" id="uploadArea">
-      <div class="upload-icon">📁</div>
-      <p><strong>לחץ כאן או גרור קובץ</strong></p>
-      <p style="font-size: 14px; color: #666; margin-top: 5px;">
-        MP3, WAV, M4A (עד 10MB)
-      </p>
-      <input type="file" id="fileInput" accept="audio/*">
-    </div>
+  <h1>🎸 ChordFinder Pro v3.0 (Test)</h1>
+  <p>מנגנון חדש מודולרי עם הקוד המוכח מ-v10!</p>
 
-    <div class="file-info" id="fileInfo" style="display: none;"></div>
-
-    <button class="btn" id="uploadBtn" disabled>העלה לתמלול</button>
-
-    <div id="status"></div>
-    <div id="result"></div>
-    <div id="debug" class="debug" style="display: none;"></div>
+  <div class="panel">
+    <h2>העלאת קובץ</h2>
+    <input type="file" id="fileInput" accept="audio/*,video/*">
+    <br><br>
+    <label>
+      מצב:
+      <select id="modeSelect">
+        <option value="balanced">Balanced</option>
+        <option value="accurate">Accurate (Pro)</option>
+      </select>
+    </label>
+    <br><br>
+    <button id="analyzeBtn">נתח</button>
+    <button id="playBtn" disabled>▶️ נגן</button>
   </div>
 
+  <div class="panel">
+    <h2>תוצאות</h2>
+    <div id="status">—</div>
+    <div id="key">סולם: —</div>
+    <div id="bpm">BPM: —</div>
+  </div>
+
+  <div class="panel">
+    <h2>אקורד נוכחי</h2>
+    <div class="chord" id="currentChord">—</div>
+  </div>
+
+  <div class="panel">
+    <h2>Timeline</h2>
+    <div class="timeline" id="timeline">—</div>
+  </div>
+
+  <audio id="player" controls style="width: 100%; margin-top: 10px;"></audio>
+
+  <!-- Load modules in order -->
+  <script src="chord-engine-base.js"></script>
+  <script src="chord-engine-v3.js"></script>
+  <script src="chord-engine-pro-v3.js"></script>
+
   <script>
-    const SERVER = 'https://youtube-proxy-pied.vercel.app';
-    let selectedFile = null;
-
-    const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
-    const fileInfo = document.getElementById('fileInfo');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const statusDiv = document.getElementById('status');
-    const resultDiv = document.getElementById('result');
-    const debugDiv = document.getElementById('debug');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const playBtn = document.getElementById('playBtn');
+    const modeSelect = document.getElementById('modeSelect');
+    const statusEl = document.getElementById('status');
+    const keyEl = document.getElementById('key');
+    const bpmEl = document.getElementById('bpm');
+    const currentChordEl = document.getElementById('currentChord');
+    const timelineEl = document.getElementById('timeline');
+    const player = document.getElementById('player');
 
-    // Click to select file
-    uploadArea.addEventListener('click', () => fileInput.click());
+    let STATE = null;
 
-    // File selected
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) handleFile(file);
-    });
-
-    // Drag and drop
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('dragover');
-    });
-
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('dragover');
-    });
-
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) handleFile(file);
-    });
-
-    function handleFile(file) {
-      log('📁 File selected: ' + file.name);
-      log('📦 Size: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB');
-      log('🎵 Type: ' + file.type);
-
-      if (file.size > 10 * 1024 * 1024) {
-        showStatus('הקובץ גדול מדי! מקסימום 10MB', 'error');
-        log('❌ File too large!');
+    analyzeBtn.onclick = async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('בחר קובץ אודיו');
         return;
       }
 
-      selectedFile = file;
-      uploadBtn.disabled = false;
-
-      fileInfo.style.display = 'block';
-      fileInfo.innerHTML = `
-        <strong>קובץ נבחר:</strong> ${file.name}<br>
-        <strong>גודל:</strong> ${(file.size / 1024 / 1024).toFixed(2)} MB<br>
-        <strong>סוג:</strong> ${file.type}
-      `;
-
-      showStatus('קובץ מוכן! לחץ על "העלה לתמלול"', 'info');
-    }
-
-    uploadBtn.addEventListener('click', async () => {
-      if (!selectedFile) return;
-
-      uploadBtn.disabled = true;
-      statusDiv.innerHTML = '<div class="spinner"></div>';
-      resultDiv.innerHTML = '';
-      debugDiv.style.display = 'block';
-      debugDiv.innerHTML = '';
-
-      log('🚀 Starting upload...');
-
       try {
-        // Create FormData
-        const formData = new FormData();
-        formData.append('audio', selectedFile);
+        statusEl.textContent = '⏳ מנתח...';
+        analyzeBtn.disabled = true;
 
-        log('📤 Uploading to: ' + SERVER + '/api/whisper-transcribe');
-        log('📦 FormData created with audio file');
+        // Choose engine based on mode
+        const mode = modeSelect.value;
+        const engine = mode === 'accurate' ? new ChordEnginePro() : new ChordEngine();
 
-        // Upload
-        const startTime = Date.now();
-        const response = await fetch(SERVER + '/api/whisper-transcribe', {
-          method: 'POST',
-          body: formData
-        });
-
-        const uploadTime = ((Date.now() - startTime) / 1000).toFixed(2);
-        log('⏱️ Upload took: ' + uploadTime + 's');
-        log('📡 Response status: ' + response.status + ' ' + response.statusText);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          log('❌ Error response: ' + errorText);
-          throw new Error(`Server error: ${response.status} - ${errorText}`);
-        }
-
-        log('✅ Response OK, parsing JSON...');
-        const data = await response.json();
+        // Step 1: Decode audio
+        statusEl.textContent = '[1/2] טעינת אודיו...';
+        const audioData = await engine.decodeAudio(file);
         
-        log('📦 Response data:');
-        log(JSON.stringify(data, null, 2));
+        // Step 2: Analyze
+        statusEl.textContent = '[2/2] מנתח אקורדים...';
+        const result = await engine.analyze(audioData, mode);
 
-        if (data.success) {
-          showStatus('✅ תמלול הושלם בהצלחה!', 'success');
-          displayResult(data);
-        } else {
-          throw new Error(data.error || 'Unknown error');
+        // Save state
+        STATE = result;
+
+        // Display results
+        statusEl.textContent = '✅ ניתוח הושלם!';
+        keyEl.textContent = `סולם: ${engine.nameSharp(result.key.root)}${result.key.minor ? 'm' : ''}`;
+        bpmEl.textContent = `BPM: ${result.bpm}`;
+
+        // Display timeline
+        let timelineText = '';
+        for (const ev of result.timeline) {
+          timelineText += `${ev.t.toFixed(2)}s  ${ev.label}\n`;
         }
+        timelineEl.textContent = timelineText;
 
-      } catch (error) {
-        log('💥 ERROR: ' + error.message);
-        log('Stack: ' + error.stack);
-        showStatus('❌ שגיאה: ' + error.message, 'error');
+        // Setup audio
+        const url = URL.createObjectURL(file);
+        player.src = url;
+        playBtn.disabled = false;
+
+        // Live tracking
+        player.ontimeupdate = () => {
+          const t = player.currentTime;
+          let i = STATE.timeline.findIndex(x => x.t > t);
+          if (i === -1) i = STATE.timeline.length;
+          const ev = STATE.timeline[i - 1] || STATE.timeline[0];
+          if (ev) {
+            currentChordEl.textContent = ev.label;
+          }
+        };
+
+      } catch (e) {
+        statusEl.textContent = '❌ שגיאה: ' + e.message;
+        console.error(e);
       } finally {
-        uploadBtn.disabled = false;
+        analyzeBtn.disabled = false;
       }
-    });
+    };
 
-    function showStatus(message, type) {
-      statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
-    }
-
-    function log(message) {
-      const timestamp = new Date().toLocaleTimeString('he-IL');
-      debugDiv.innerHTML += `[${timestamp}] ${message}\n`;
-      debugDiv.scrollTop = debugDiv.scrollHeight;
-      console.log(message);
-    }
-
-    function displayResult(data) {
-      let html = '<h3>תוצאות התמלול:</h3>';
-      
-      html += `<p><strong>שפה:</strong> ${data.language || 'N/A'}</p>`;
-      html += `<p><strong>משך:</strong> ${data.duration ? data.duration.toFixed(2) : 'N/A'}s</p>`;
-      html += `<p><strong>מספר קטעים:</strong> ${data.segments ? data.segments.length : 0}</p>`;
-      
-      html += '<hr style="margin: 15px 0;">';
-      
-      html += '<h4>טקסט מלא:</h4>';
-      html += `<p style="background: white; padding: 10px; border-radius: 5px;">${data.text || 'No text'}</p>`;
-      
-      if (data.segments && data.segments.length > 0) {
-        html += '<h4 style="margin-top: 20px;">קטעים עם timestamps:</h4>';
-        html += '<div style="max-height: 300px; overflow-y: auto;">';
-        data.segments.forEach((seg, i) => {
-          const startTime = seg.start.toFixed(2);
-          const endTime = seg.end.toFixed(2);
-          html += `
-            <div style="background: white; padding: 8px; margin: 5px 0; border-radius: 5px; border-left: 3px solid #667eea;">
-              <strong>[${startTime}s - ${endTime}s]</strong><br>
-              ${seg.text}
-            </div>
-          `;
-        });
-        html += '</div>';
-      }
-      
-      resultDiv.innerHTML = html;
-    }
-
-    log('🎬 App initialized');
-    log('🌐 Server: ' + SERVER);
+    playBtn.onclick = () => {
+      player.play();
+    };
   </script>
 </body>
 </html>
